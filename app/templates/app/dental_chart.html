@@ -21,41 +21,113 @@
             <div class="px-4 py-5 sm:p-6">
                 <div class="mb-6">
                     <h4 class="text-md font-medium text-gray-700 mb-2">Interactive Dental Chart</h4>
-                    <p class="text-sm text-gray-500 mb-4">Click on a tooth to add or view treatments</p>
+                    <p class="text-sm text-gray-500 mb-4">Click on teeth to select multiple teeth for treatment</p>
+                    
+                    <!-- Selected Teeth Counter -->
+                    <div class="mb-4 flex justify-between items-center">
+                        <div>
+                            <span class="text-sm font-medium text-gray-700">Selected Teeth: </span>
+                            <span id="selected-teeth-count" class="text-sm font-medium text-indigo-600">0</span>
+                        </div>
+                        <div>
+                            <button id="clear-selection" type="button" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Clear Selection
+                            </button>
+                            <button id="add-treatment-btn" type="button" class="ml-3 inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                Add Treatment
+                            </button>
+                        </div>
+                    </div>
                     
                     <!-- Adult Dental Chart -->
                     <div class="dental-chart-container">
                         <!-- Upper Teeth -->
                         <div class="flex justify-center mb-8">
-                            <div class="dental-chart-upper grid grid-cols-16 gap-1">
-                                {% for tooth in upper_teeth %}
-                                <div class="tooth-container" data-tooth-id="{{ tooth.id }}" data-tooth-number="{{ tooth.number }}">
-                                    <div class="tooth-number text-xs text-center mb-1">{{ tooth.number }}</div>
-                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %}" id="tooth-{{ tooth.number }}">
-                                        <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
-                                            <polygon points="20,0 40,15 30,60 10,60 0,15" class="tooth-shape" />
-                                        </svg>
-                                    </div>
-                                    <div class="tooth-name text-xs text-center mt-1">{{ tooth.name }}</div>
+                            <div class="dental-chart-upper grid grid-cols-2 gap-4">
+                                <!-- Upper Right Quadrant (1) -->
+                                <div class="quadrant-1 grid grid-cols-8 gap-1">
+                                    {% for tooth in teeth %}
+                                        {% if tooth.quadrant == 1 %}
+                                        <div class="tooth-container" data-tooth-id="{{ tooth.id }}" data-tooth-number="{{ tooth.number }}">
+                                            <div class="tooth-number text-xs text-center mb-1">{{ tooth.number }}</div>
+                                            <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %}" id="tooth-{{ tooth.number }}">
+                                                <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                                                    <polygon points="20,0 40,15 30,60 10,60 0,15" class="tooth-shape" />
+                                                    {% if tooth.treatment_counts.total > 0 %}
+                                                    <text x="20" y="35" text-anchor="middle" class="tooth-count">{{ tooth.treatment_counts.total }}</text>
+                                                    {% endif %}
+                                                </svg>
+                                            </div>
+                                            <div class="tooth-position text-xs text-center mt-1">{{ tooth.position }}</div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
                                 </div>
-                                {% endfor %}
+                                
+                                <!-- Upper Left Quadrant (2) -->
+                                <div class="quadrant-2 grid grid-cols-8 gap-1">
+                                    {% for tooth in teeth %}
+                                        {% if tooth.quadrant == 2 %}
+                                        <div class="tooth-container" data-tooth-id="{{ tooth.id }}" data-tooth-number="{{ tooth.number }}">
+                                            <div class="tooth-number text-xs text-center mb-1">{{ tooth.number }}</div>
+                                            <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %}" id="tooth-{{ tooth.number }}">
+                                                <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                                                    <polygon points="20,0 40,15 30,60 10,60 0,15" class="tooth-shape" />
+                                                    {% if tooth.treatment_counts.total > 0 %}
+                                                    <text x="20" y="35" text-anchor="middle" class="tooth-count">{{ tooth.treatment_counts.total }}</text>
+                                                    {% endif %}
+                                                </svg>
+                                            </div>
+                                            <div class="tooth-position text-xs text-center mt-1">{{ tooth.position }}</div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
                             </div>
                         </div>
                         
                         <!-- Lower Teeth -->
                         <div class="flex justify-center">
-                            <div class="dental-chart-lower grid grid-cols-16 gap-1">
-                                {% for tooth in lower_teeth %}
-                                <div class="tooth-container" data-tooth-id="{{ tooth.id }}" data-tooth-number="{{ tooth.number }}">
-                                    <div class="tooth-name text-xs text-center mb-1">{{ tooth.name }}</div>
-                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %}" id="tooth-{{ tooth.number }}">
-                                        <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
-                                            <polygon points="20,60 40,45 30,0 10,0 0,45" class="tooth-shape" />
-                                        </svg>
-                                    </div>
-                                    <div class="tooth-number text-xs text-center mt-1">{{ tooth.number }}</div>
+                            <div class="dental-chart-lower grid grid-cols-2 gap-4">
+                                <!-- Lower Right Quadrant (4) -->
+                                <div class="quadrant-4 grid grid-cols-8 gap-1">
+                                    {% for tooth in teeth %}
+                                        {% if tooth.quadrant == 4 %}
+                                        <div class="tooth-container" data-tooth-id="{{ tooth.id }}" data-tooth-number="{{ tooth.number }}">
+                                            <div class="tooth-position text-xs text-center mb-1">{{ tooth.position }}</div>
+                                            <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %}" id="tooth-{{ tooth.number }}">
+                                                <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                                                    <polygon points="20,60 40,45 30,0 10,0 0,45" class="tooth-shape" />
+                                                    {% if tooth.treatment_counts.total > 0 %}
+                                                    <text x="20" y="35" text-anchor="middle" class="tooth-count">{{ tooth.treatment_counts.total }}</text>
+                                                    {% endif %}
+                                                </svg>
+                                            </div>
+                                            <div class="tooth-number text-xs text-center mt-1">{{ tooth.number }}</div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
                                 </div>
-                                {% endfor %}
+                                
+                                <!-- Lower Left Quadrant (3) -->
+                                <div class="quadrant-3 grid grid-cols-8 gap-1">
+                                    {% for tooth in teeth %}
+                                        {% if tooth.quadrant == 3 %}
+                                        <div class="tooth-container" data-tooth-id="{{ tooth.id }}" data-tooth-number="{{ tooth.number }}">
+                                            <div class="tooth-position text-xs text-center mb-1">{{ tooth.position }}</div>
+                                            <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %}" id="tooth-{{ tooth.number }}">
+                                                <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                                                    <polygon points="20,60 40,45 30,0 10,0 0,45" class="tooth-shape" />
+                                                    {% if tooth.treatment_counts.total > 0 %}
+                                                    <text x="20" y="35" text-anchor="middle" class="tooth-count">{{ tooth.treatment_counts.total }}</text>
+                                                    {% endif %}
+                                                </svg>
+                                            </div>
+                                            <div class="tooth-number text-xs text-center mt-1">{{ tooth.number }}</div>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -63,10 +135,13 @@
                 
                 <!-- Treatment Form Section (initially hidden) -->
                 <div id="treatment-form-container" class="hidden mt-8 p-4 border border-gray-200 rounded-md">
-                    <h4 class="text-md font-medium text-gray-700 mb-4">Add Treatment for Tooth <span id="selected-tooth-number"></span></h4>
+                    <h4 class="text-md font-medium text-gray-700 mb-4">Add Treatment for Selected Teeth</h4>
+                    <div id="selected-teeth-list" class="mb-4 flex flex-wrap gap-2">
+                        <!-- Selected teeth will be displayed here -->
+                    </div>
                     <form id="treatment-form" method="post" action="{% url 'add_treatment' patient.id %}">
                         {% csrf_token %}
-                        <input type="hidden" name="tooth_id" id="tooth_id">
+                        <input type="hidden" name="tooth_ids" id="tooth_ids">
                         
                         <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                             <div class="sm:col-span-3">
@@ -86,7 +161,9 @@
                                     <select id="appointment" name="appointment" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
                                         <option value="">Select an appointment</option>
                                         {% for appointment in appointments %}
-                                        <option value="{{ appointment.id }}">{{ appointment.date }} - {{ appointment.start_time }}</option>
+                                        <option value="{{ appointment.id }}" {% if selected_appointment_id == appointment.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ appointment.date }} - {{ appointment.start_time }}
+                                        </option>
                                         {% endfor %}
                                     </select>
                                 </div>
@@ -114,7 +191,15 @@
                             <div class="sm:col-span-3">
                                 <label for="cost" class="block text-sm font-medium text-gray-700">Cost ($)</label>
                                 <div class="mt-1">
-                                    <input type="number" name="cost" id="cost" step="0.01" min="0" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                    <input type="number" 
+                                           name="cost" 
+                                           id="cost" 
+                                           step="0.01" 
+                                           min="0" 
+                                           value="0"
+                                           oninput="validateCost(this)"
+                                           class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                    <p class="mt-1 text-xs text-gray-500">Enter 0 if no cost is associated</p>
                                 </div>
                             </div>
                         </div>
@@ -155,9 +240,6 @@
         max-width: 800px;
         margin: 0 auto;
     }
-    .grid-cols-16 {
-        grid-template-columns: repeat(16, minmax(0, 1fr));
-    }
     .tooth-container {
         display: flex;
         flex-direction: column;
@@ -180,8 +262,37 @@
     .has-treatment .tooth-shape {
         fill: #e5e7eb;
     }
+    .planned .tooth-shape {
+        fill: #fef3c7;
+    }
+    .in-progress .tooth-shape {
+        fill: #dbeafe;
+    }
+    .completed .tooth-shape {
+        fill: #d1fae5;
+    }
     .selected .tooth-shape {
         fill: #c7d2fe;
+        stroke-width: 3;
+    }
+    .tooth-count {
+        font-size: 14px;
+        font-weight: bold;
+        fill: #4b5563;
+    }
+    .selected-tooth-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        background-color: #e0e7ff;
+        color: #4338ca;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .selected-tooth-badge .remove-tooth {
+        margin-left: 0.25rem;
+        cursor: pointer;
     }
 </style>
 
@@ -190,18 +301,81 @@
         const teeth = document.querySelectorAll('.tooth');
         const treatmentFormContainer = document.getElementById('treatment-form-container');
         const treatmentHistoryContainer = document.getElementById('treatment-history-container');
-        const selectedToothNumber = document.getElementById('selected-tooth-number');
-        const historyToothNumber = document.getElementById('history-tooth-number');
-        const toothIdInput = document.getElementById('tooth_id');
+        const selectedTeethCount = document.getElementById('selected-teeth-count');
+        const selectedTeethList = document.getElementById('selected-teeth-list');
+        const toothIdsInput = document.getElementById('tooth_ids');
         const cancelTreatmentBtn = document.getElementById('cancel-treatment');
         const closeHistoryBtn = document.getElementById('close-history');
         const addNewTreatmentBtn = document.getElementById('add-new-treatment');
+        const clearSelectionBtn = document.getElementById('clear-selection');
+        const addTreatmentBtn = document.getElementById('add-treatment-btn');
         
-        // Function to deselect all teeth
-        function deselectAllTeeth() {
-            teeth.forEach(tooth => {
-                tooth.parentElement.classList.remove('selected');
+        // Array to store selected tooth IDs
+        let selectedTeeth = [];
+        
+        // Function to update the selected teeth count and list
+        function updateSelectedTeeth() {
+            // Update count
+            selectedTeethCount.textContent = selectedTeeth.length;
+            
+            // Update hidden input value
+            toothIdsInput.value = selectedTeeth.join(',');
+            
+            // Update the selected teeth list
+            selectedTeethList.innerHTML = '';
+            selectedTeeth.forEach(toothId => {
+                const toothContainer = document.querySelector(`.tooth-container[data-tooth-id="${toothId}"]`);
+                const toothNumber = toothContainer.dataset.toothNumber;
+                
+                const badge = document.createElement('div');
+                badge.className = 'selected-tooth-badge';
+                badge.innerHTML = `
+                    Tooth ${toothNumber}
+                    <span class="remove-tooth" data-tooth-id="${toothId}">&times;</span>
+                `;
+                selectedTeethList.appendChild(badge);
+                
+                // Add click event to remove button
+                badge.querySelector('.remove-tooth').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const toothId = this.dataset.toothId;
+                    removeToothFromSelection(toothId);
+                });
             });
+            
+            // Enable/disable the add treatment button
+            addTreatmentBtn.disabled = selectedTeeth.length === 0;
+        }
+        
+        // Function to add a tooth to the selection
+        function addToothToSelection(toothId) {
+            if (!selectedTeeth.includes(toothId)) {
+                selectedTeeth.push(toothId);
+                const toothContainer = document.querySelector(`.tooth-container[data-tooth-id="${toothId}"]`);
+                toothContainer.querySelector('.tooth').parentElement.classList.add('selected');
+                updateSelectedTeeth();
+            }
+        }
+        
+        // Function to remove a tooth from the selection
+        function removeToothFromSelection(toothId) {
+            const index = selectedTeeth.indexOf(toothId);
+            if (index > -1) {
+                selectedTeeth.splice(index, 1);
+                const toothContainer = document.querySelector(`.tooth-container[data-tooth-id="${toothId}"]`);
+                toothContainer.querySelector('.tooth').parentElement.classList.remove('selected');
+                updateSelectedTeeth();
+            }
+        }
+        
+        // Function to clear all selections
+        function clearAllSelections() {
+            selectedTeeth = [];
+            document.querySelectorAll('.tooth-container.selected').forEach(container => {
+                container.classList.remove('selected');
+            });
+            updateSelectedTeeth();
+            hideAllContainers();
         }
         
         // Function to hide all containers
@@ -212,15 +386,17 @@
         
         // Function to load treatment history for a tooth
         function loadTreatmentHistory(toothId, toothNumber) {
-            // In a real application, this would make an AJAX request to get the treatment history
-            // For now, we'll simulate it with a placeholder
             const historyList = document.getElementById('treatment-history-list');
+            const historyToothNumber = document.getElementById('history-tooth-number');
+            
+            // Update the tooth number in the header
+            historyToothNumber.textContent = toothNumber;
             
             // Clear previous history
             historyList.innerHTML = '';
             
-            // Simulate loading (in a real app, you would fetch this data from the server)
-            fetch(`/app/treatments/tooth/${toothId}/`)
+            // Fetch treatment history with patient_id
+            fetch(`/app/treatments/tooth/${toothId}/?patient_id={{ patient.id }}`)
                 .then(response => response.json())
                 .then(treatments => {
                     if (treatments.length === 0) {
@@ -229,16 +405,70 @@
                         treatments.forEach(treatment => {
                             const treatmentItem = document.createElement('div');
                             treatmentItem.className = 'p-4';
+                            
+                            // Create status badge with appropriate color
+                            let statusBadgeClass = '';
+                            if (treatment.status_code === 'planned') {
+                                statusBadgeClass = 'bg-yellow-100 text-yellow-800';
+                            } else if (treatment.status_code === 'in_progress') {
+                                statusBadgeClass = 'bg-blue-100 text-blue-800';
+                            } else if (treatment.status_code === 'completed') {
+                                statusBadgeClass = 'bg-green-100 text-green-800';
+                            } else {
+                                statusBadgeClass = 'bg-red-100 text-red-800';
+                            }
+                            
+                            // Create action buttons based on status
+                            let actionButtons = '';
+                            if (treatment.status_code === 'planned') {
+                                actionButtons = `
+                                    <div class="mt-2 flex space-x-2">
+                                        <a href="/app/treatments/${treatment.id}/update/" class="text-xs text-indigo-600 hover:text-indigo-900">Edit</a>
+                                        <form action="/app/treatments/${treatment.id}/update/" method="post" class="inline">
+                                            <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('[name=csrfmiddlewaretoken]').value}">
+                                            <input type="hidden" name="status" value="in_progress">
+                                            <input type="hidden" name="description" value="${treatment.description}">
+                                            <input type="hidden" name="cost" value="${treatment.cost}">
+                                            <input type="hidden" name="referer" value="${window.location.pathname}">
+                                            <button type="submit" class="text-xs text-blue-600 hover:text-blue-900">Start</button>
+                                        </form>
+                                    </div>
+                                `;
+                            } else if (treatment.status_code === 'in_progress') {
+                                actionButtons = `
+                                    <div class="mt-2 flex space-x-2">
+                                        <a href="/app/treatments/${treatment.id}/update/" class="text-xs text-indigo-600 hover:text-indigo-900">Edit</a>
+                                        <form action="/app/treatments/${treatment.id}/update/" method="post" class="inline">
+                                            <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('[name=csrfmiddlewaretoken]').value}">
+                                            <input type="hidden" name="status" value="completed">
+                                            <input type="hidden" name="description" value="${treatment.description}">
+                                            <input type="hidden" name="cost" value="${treatment.cost}">
+                                            <input type="hidden" name="referer" value="${window.location.pathname}">
+                                            <button type="submit" class="text-xs text-green-600 hover:text-green-900">Complete</button>
+                                        </form>
+                                    </div>
+                                `;
+                            } else {
+                                actionButtons = `
+                                    <div class="mt-2">
+                                        <a href="/app/treatments/${treatment.id}/" class="text-xs text-indigo-600 hover:text-indigo-900">View Details</a>
+                                    </div>
+                                `;
+                            }
+                            
                             treatmentItem.innerHTML = `
                                 <div class="flex justify-between">
                                     <h5 class="text-sm font-medium text-gray-900">${treatment.condition_name}</h5>
-                                    <span class="text-sm text-gray-500">${treatment.status}</span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeClass}">
+                                        ${treatment.status}
+                                    </span>
                                 </div>
                                 <p class="mt-1 text-sm text-gray-500">${treatment.description}</p>
                                 <div class="mt-2 flex justify-between text-xs text-gray-500">
                                     <span>Cost: $${treatment.cost}</span>
                                     <span>${treatment.created_at}</span>
                                 </div>
+                                ${actionButtons}
                             `;
                             historyList.appendChild(treatmentItem);
                         });
@@ -252,50 +482,43 @@
         
         // Add click event to each tooth
         teeth.forEach(tooth => {
-            tooth.addEventListener('click', function() {
+            tooth.addEventListener('click', function(e) {
+                e.stopPropagation();
                 const toothContainer = this.parentElement;
                 const toothId = toothContainer.dataset.toothId;
                 const toothNumber = toothContainer.dataset.toothNumber;
                 
-                // If the tooth is already selected, deselect it and hide containers
+                // Check if the tooth is already selected
                 if (toothContainer.classList.contains('selected')) {
-                    toothContainer.classList.remove('selected');
-                    hideAllContainers();
-                    return;
-                }
-                
-                // Deselect all teeth and select the clicked one
-                deselectAllTeeth();
-                toothContainer.classList.add('selected');
-                
-                // Update the form with the selected tooth info
-                selectedToothNumber.textContent = toothNumber;
-                historyToothNumber.textContent = toothNumber;
-                toothIdInput.value = toothId;
-                
-                // Check if the tooth has treatments
-                if (toothContainer.querySelector('.tooth').classList.contains('has-treatment')) {
-                    // Show treatment history
-                    treatmentFormContainer.classList.add('hidden');
-                    treatmentHistoryContainer.classList.remove('hidden');
-                    loadTreatmentHistory(toothId, toothNumber);
+                    removeToothFromSelection(toothId);
                 } else {
-                    // Show treatment form
-                    treatmentHistoryContainer.classList.add('hidden');
-                    treatmentFormContainer.classList.remove('hidden');
+                    // If the tooth has treatments, show history on double click
+                    if (e.detail === 2 && this.classList.contains('has-treatment')) {
+                        clearAllSelections();
+                        treatmentFormContainer.classList.add('hidden');
+                        treatmentHistoryContainer.classList.remove('hidden');
+                        loadTreatmentHistory(toothId, toothNumber);
+                    } else {
+                        // Add to selection on single click
+                        addToothToSelection(toothId);
+                    }
                 }
             });
         });
         
+        // Add treatment button click event
+        addTreatmentBtn.addEventListener('click', function() {
+            treatmentHistoryContainer.classList.add('hidden');
+            treatmentFormContainer.classList.remove('hidden');
+        });
+        
         // Cancel treatment button
         cancelTreatmentBtn.addEventListener('click', function() {
-            deselectAllTeeth();
             hideAllContainers();
         });
         
         // Close history button
         closeHistoryBtn.addEventListener('click', function() {
-            deselectAllTeeth();
             hideAllContainers();
         });
         
@@ -303,6 +526,48 @@
         addNewTreatmentBtn.addEventListener('click', function() {
             treatmentHistoryContainer.classList.add('hidden');
             treatmentFormContainer.classList.remove('hidden');
+        });
+        
+        // Clear selection button
+        clearSelectionBtn.addEventListener('click', function() {
+            clearAllSelections();
+        });
+        
+        // Add form validation
+        const treatmentForm = document.getElementById('treatment-form');
+        
+        function validateCost(input) {
+            const value = input.value;
+            if (value === '') {
+                input.value = '0';
+            } else {
+                const numValue = parseFloat(value);
+                if (isNaN(numValue) || numValue < 0) {
+                    input.value = '0';
+                }
+            }
+        }
+        
+        treatmentForm.addEventListener('submit', function(e) {
+            const costInput = document.getElementById('cost');
+            const conditionInput = document.getElementById('condition');
+            const descriptionInput = document.getElementById('description');
+            
+            // Validate cost
+            validateCost(costInput);
+            
+            // Validate required fields
+            if (!conditionInput.value) {
+                e.preventDefault();
+                alert('Please select a condition');
+                return;
+            }
+            
+            if (!descriptionInput.value.trim()) {
+                e.preventDefault();
+                alert('Please enter a description');
+                return;
+            }
         });
     });
 </script>

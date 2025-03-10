@@ -95,9 +95,12 @@ class Appointment(models.Model):
         ordering = ['-date', '-start_time']
 
 class Tooth(models.Model):
-    # Using Zsigmondy-Palmer notation (1-32 for permanent teeth)
+    # Using double-digit tooth numbering system
+    # First digit is the quadrant (1-4), second digit is the tooth position (1-8)
     number = models.IntegerField()
     name = models.CharField(max_length=50)
+    quadrant = models.IntegerField(choices=[(1, 'Upper Right'), (2, 'Upper Left'), (3, 'Lower Left'), (4, 'Lower Right')], null=True, blank=True)
+    position = models.IntegerField(help_text="Position within the quadrant (1-8)", null=True, blank=True)
     
     def __str__(self):
         return f"Tooth {self.number} - {self.name}"

@@ -24,4 +24,6 @@ urlpatterns = [
     path('patients/<int:patient_id>/dental-chart/', views.dental_chart, name='dental_chart'),
     path('patients/<int:patient_id>/add-treatment/', views.add_treatment, name='add_treatment'),
     path('treatments/tooth/<int:tooth_id>/', views.get_tooth_treatments, name='get_tooth_treatments'),
+    path('treatments/<int:pk>/', views.treatment_detail, name='treatment_detail'),
+    path('treatments/<int:pk>/update/', views.treatment_update, name='treatment_update'),
 ] 
