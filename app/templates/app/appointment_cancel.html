@@ -1,0 +1,90 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Cancel Appointment - Dental Practice Management System{% endblock %}
+
+{% block content %}
+<div class="py-6">
+    <div class="max-w-lg mx-auto">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-semibold text-gray-900">Cancel Appointment</h1>
+            <p class="mt-1 text-sm text-gray-500">Are you sure you want to cancel this appointment?</p>
+        </div>
+
+        <div class="bg-white shadow overflow-hidden rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <div class="mb-6">
+                    <div class="flex items-center justify-center mb-4">
+                        <div class="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                            <i class="bi bi-x-circle text-2xl text-red-600"></i>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <h3 class="text-lg font-medium text-gray-900">Appointment Details</h3>
+                        <div class="mt-2 text-sm text-gray-500">
+                            <p>Patient: {{ appointment.patient.name }}</p>
+                            <p>Date: {{ appointment.date|date:"F d, Y" }}</p>
+                            <p>Time: {{ appointment.start_time|time:"g:i A" }} - {{ appointment.end_time|time:"g:i A" }}</p>
+                            <p>Dentist: 
+                                {% if appointment.dentist.first_name or appointment.dentist.last_name %}
+                                    {{ appointment.dentist.get_full_name }}
+                                {% else %}
+                                    {{ appointment.dentist.username }}
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    {% if form.non_field_errors %}
+                    <div class="rounded-md bg-red-50 p-4">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="bi bi-exclamation-circle text-red-400"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">There were errors with your submission</h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    <ul class="list-disc pl-5 space-y-1">
+                                        {% for error in form.non_field_errors %}
+                                        <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div>
+                        <label for="{{ form.reason.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            Cancellation Reason
+                        </label>
+                        <div class="mt-1">
+                            <textarea name="{{ form.reason.name }}" id="{{ form.reason.id_for_label }}" rows="3"
+                                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                                      {% if form.reason.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}"
+                                      placeholder="Please provide a reason for cancelling this appointment">{{ form.reason.value|default:'' }}</textarea>
+                            {% if form.reason.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.reason.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-3">
+                        <a href="{% url 'appointment_detail' appointment.pk %}"
+                           class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Keep Appointment
+                        </a>
+                        <button type="submit"
+                                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            Cancel Appointment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

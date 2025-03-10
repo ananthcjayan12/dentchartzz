@@ -1,0 +1,309 @@
+{% extends 'app/base.html' %}
+{% block title %}Dental Chart - {{ patient.name }}{% endblock %}
+
+{% block content %}
+<div class="py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Dental Chart</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Patient: {{ patient.name }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'patient_detail' patient.id %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Back to Patient
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Dental Chart Container -->
+            <div class="px-4 py-5 sm:p-6">
+                <div class="mb-6">
+                    <h4 class="text-md font-medium text-gray-700 mb-2">Interactive Dental Chart</h4>
+                    <p class="text-sm text-gray-500 mb-4">Click on a tooth to add or view treatments</p>
+                    
+                    <!-- Adult Dental Chart -->
+                    <div class="dental-chart-container">
+                        <!-- Upper Teeth -->
+                        <div class="flex justify-center mb-8">
+                            <div class="dental-chart-upper grid grid-cols-16 gap-1">
+                                {% for tooth in upper_teeth %}
+                                <div class="tooth-container" data-tooth-id="{{ tooth.id }}" data-tooth-number="{{ tooth.number }}">
+                                    <div class="tooth-number text-xs text-center mb-1">{{ tooth.number }}</div>
+                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %}" id="tooth-{{ tooth.number }}">
+                                        <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                                            <polygon points="20,0 40,15 30,60 10,60 0,15" class="tooth-shape" />
+                                        </svg>
+                                    </div>
+                                    <div class="tooth-name text-xs text-center mt-1">{{ tooth.name }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <!-- Lower Teeth -->
+                        <div class="flex justify-center">
+                            <div class="dental-chart-lower grid grid-cols-16 gap-1">
+                                {% for tooth in lower_teeth %}
+                                <div class="tooth-container" data-tooth-id="{{ tooth.id }}" data-tooth-number="{{ tooth.number }}">
+                                    <div class="tooth-name text-xs text-center mb-1">{{ tooth.name }}</div>
+                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %}" id="tooth-{{ tooth.number }}">
+                                        <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                                            <polygon points="20,60 40,45 30,0 10,0 0,45" class="tooth-shape" />
+                                        </svg>
+                                    </div>
+                                    <div class="tooth-number text-xs text-center mt-1">{{ tooth.number }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Treatment Form Section (initially hidden) -->
+                <div id="treatment-form-container" class="hidden mt-8 p-4 border border-gray-200 rounded-md">
+                    <h4 class="text-md font-medium text-gray-700 mb-4">Add Treatment for Tooth <span id="selected-tooth-number"></span></h4>
+                    <form id="treatment-form" method="post" action="{% url 'add_treatment' patient.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="tooth_id" id="tooth_id">
+                        
+                        <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                            <div class="sm:col-span-3">
+                                <label for="condition" class="block text-sm font-medium text-gray-700">Condition</label>
+                                <div class="mt-1">
+                                    <select id="condition" name="condition" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                        {% for condition in conditions %}
+                                        <option value="{{ condition.id }}">{{ condition.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="sm:col-span-3">
+                                <label for="appointment" class="block text-sm font-medium text-gray-700">Appointment (Optional)</label>
+                                <div class="mt-1">
+                                    <select id="appointment" name="appointment" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                        <option value="">Select an appointment</option>
+                                        {% for appointment in appointments %}
+                                        <option value="{{ appointment.id }}">{{ appointment.date }} - {{ appointment.start_time }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="sm:col-span-6">
+                                <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                                <div class="mt-1">
+                                    <textarea id="description" name="description" rows="3" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="sm:col-span-3">
+                                <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                                <div class="mt-1">
+                                    <select id="status" name="status" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                        <option value="planned">Planned</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="completed">Completed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="sm:col-span-3">
+                                <label for="cost" class="block text-sm font-medium text-gray-700">Cost ($)</label>
+                                <div class="mt-1">
+                                    <input type="number" name="cost" id="cost" step="0.01" min="0" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
+                            <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm">
+                                Save Treatment
+                            </button>
+                            <button type="button" id="cancel-treatment" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Treatment History Section -->
+                <div id="treatment-history-container" class="hidden mt-8">
+                    <h4 class="text-md font-medium text-gray-700 mb-4">Treatment History for Tooth <span id="history-tooth-number"></span></h4>
+                    <div id="treatment-history-list" class="border border-gray-200 rounded-md divide-y divide-gray-200">
+                        <!-- Treatment history will be loaded here via JavaScript -->
+                    </div>
+                    <div class="mt-4">
+                        <button type="button" id="add-new-treatment" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Add New Treatment
+                        </button>
+                        <button type="button" id="close-history" class="ml-3 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dental-chart-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .grid-cols-16 {
+        grid-template-columns: repeat(16, minmax(0, 1fr));
+    }
+    .tooth-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .tooth {
+        width: 40px;
+        height: 60px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .tooth:hover {
+        transform: scale(1.1);
+    }
+    .tooth-shape {
+        fill: white;
+        stroke: #4f46e5;
+        stroke-width: 2;
+    }
+    .has-treatment .tooth-shape {
+        fill: #e5e7eb;
+    }
+    .selected .tooth-shape {
+        fill: #c7d2fe;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const teeth = document.querySelectorAll('.tooth');
+        const treatmentFormContainer = document.getElementById('treatment-form-container');
+        const treatmentHistoryContainer = document.getElementById('treatment-history-container');
+        const selectedToothNumber = document.getElementById('selected-tooth-number');
+        const historyToothNumber = document.getElementById('history-tooth-number');
+        const toothIdInput = document.getElementById('tooth_id');
+        const cancelTreatmentBtn = document.getElementById('cancel-treatment');
+        const closeHistoryBtn = document.getElementById('close-history');
+        const addNewTreatmentBtn = document.getElementById('add-new-treatment');
+        
+        // Function to deselect all teeth
+        function deselectAllTeeth() {
+            teeth.forEach(tooth => {
+                tooth.parentElement.classList.remove('selected');
+            });
+        }
+        
+        // Function to hide all containers
+        function hideAllContainers() {
+            treatmentFormContainer.classList.add('hidden');
+            treatmentHistoryContainer.classList.add('hidden');
+        }
+        
+        // Function to load treatment history for a tooth
+        function loadTreatmentHistory(toothId, toothNumber) {
+            // In a real application, this would make an AJAX request to get the treatment history
+            // For now, we'll simulate it with a placeholder
+            const historyList = document.getElementById('treatment-history-list');
+            
+            // Clear previous history
+            historyList.innerHTML = '';
+            
+            // Simulate loading (in a real app, you would fetch this data from the server)
+            fetch(`/app/treatments/tooth/${toothId}/`)
+                .then(response => response.json())
+                .then(treatments => {
+                    if (treatments.length === 0) {
+                        historyList.innerHTML = '<div class="p-4 text-sm text-gray-500">No treatments found for this tooth.</div>';
+                    } else {
+                        treatments.forEach(treatment => {
+                            const treatmentItem = document.createElement('div');
+                            treatmentItem.className = 'p-4';
+                            treatmentItem.innerHTML = `
+                                <div class="flex justify-between">
+                                    <h5 class="text-sm font-medium text-gray-900">${treatment.condition_name}</h5>
+                                    <span class="text-sm text-gray-500">${treatment.status}</span>
+                                </div>
+                                <p class="mt-1 text-sm text-gray-500">${treatment.description}</p>
+                                <div class="mt-2 flex justify-between text-xs text-gray-500">
+                                    <span>Cost: $${treatment.cost}</span>
+                                    <span>${treatment.created_at}</span>
+                                </div>
+                            `;
+                            historyList.appendChild(treatmentItem);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading treatments:', error);
+                    historyList.innerHTML = '<div class="p-4 text-sm text-red-500">Error loading treatment history.</div>';
+                });
+        }
+        
+        // Add click event to each tooth
+        teeth.forEach(tooth => {
+            tooth.addEventListener('click', function() {
+                const toothContainer = this.parentElement;
+                const toothId = toothContainer.dataset.toothId;
+                const toothNumber = toothContainer.dataset.toothNumber;
+                
+                // If the tooth is already selected, deselect it and hide containers
+                if (toothContainer.classList.contains('selected')) {
+                    toothContainer.classList.remove('selected');
+                    hideAllContainers();
+                    return;
+                }
+                
+                // Deselect all teeth and select the clicked one
+                deselectAllTeeth();
+                toothContainer.classList.add('selected');
+                
+                // Update the form with the selected tooth info
+                selectedToothNumber.textContent = toothNumber;
+                historyToothNumber.textContent = toothNumber;
+                toothIdInput.value = toothId;
+                
+                // Check if the tooth has treatments
+                if (toothContainer.querySelector('.tooth').classList.contains('has-treatment')) {
+                    // Show treatment history
+                    treatmentFormContainer.classList.add('hidden');
+                    treatmentHistoryContainer.classList.remove('hidden');
+                    loadTreatmentHistory(toothId, toothNumber);
+                } else {
+                    // Show treatment form
+                    treatmentHistoryContainer.classList.add('hidden');
+                    treatmentFormContainer.classList.remove('hidden');
+                }
+            });
+        });
+        
+        // Cancel treatment button
+        cancelTreatmentBtn.addEventListener('click', function() {
+            deselectAllTeeth();
+            hideAllContainers();
+        });
+        
+        // Close history button
+        closeHistoryBtn.addEventListener('click', function() {
+            deselectAllTeeth();
+            hideAllContainers();
+        });
+        
+        // Add new treatment button
+        addNewTreatmentBtn.addEventListener('click', function() {
+            treatmentHistoryContainer.classList.add('hidden');
+            treatmentFormContainer.classList.remove('hidden');
+        });
+    });
+</script>
+{% endblock %} 

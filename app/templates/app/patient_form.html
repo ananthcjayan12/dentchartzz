@@ -1,0 +1,207 @@
+{% extends 'app/base.html' %}
+
+{% block title %}{{ title }} - Dental Practice Management System{% endblock %}
+
+{% block content %}
+<div class="py-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">{{ title }}</h1>
+            <p class="mt-1 text-sm text-gray-500">{% if patient %}Update patient information{% else %}Register a new patient{% endif %}</p>
+        </div>
+        <div>
+            <a href="{% url 'patient_list' %}" 
+               class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <i class="bi bi-arrow-left mr-2"></i>
+                Back to Patients
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white shadow overflow-hidden rounded-lg">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="px-6 py-6">
+                {% if form.non_field_errors %}
+                <div class="rounded-md bg-red-50 p-4 mb-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="bi bi-exclamation-circle text-red-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">There were errors with your submission</h3>
+                            <div class="mt-2 text-sm text-red-700">
+                                <ul class="list-disc pl-5 space-y-1">
+                                    {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="grid grid-cols-1 gap-x-8 lg:grid-cols-2">
+                    <!-- Left Column - Personal Details -->
+                    <div class="space-y-6">
+                        <h3 class="text-lg font-medium leading-6 text-gray-900 pb-2 border-b border-gray-200">Personal Details</h3>
+                        
+                        <!-- Name -->
+                        <div class="space-y-2">
+                            <label for="id_name" class="block text-sm font-medium text-gray-700">Name</label>
+                            <input type="text" name="name" id="id_name" 
+                                   value="{{ form.name.value|default:'' }}" required
+                                   class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                   {% if form.name.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">
+                            {% if form.name.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Age, Gender, DOB in a row -->
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="space-y-2">
+                                <label for="id_age" class="block text-sm font-medium text-gray-700">Age</label>
+                                <input type="number" name="age" id="id_age" 
+                                       value="{{ form.age.value|default:'' }}" required
+                                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                       {% if form.age.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">
+                                {% if form.age.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.age.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <label for="id_gender" class="block text-sm font-medium text-gray-700">Gender</label>
+                                <select name="gender" id="id_gender" required
+                                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                        {% if form.gender.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">
+                                    <option value="" {% if not form.gender.value %}selected{% endif %}>Select</option>
+                                    <option value="M" {% if form.gender.value == 'M' %}selected{% endif %}>Male</option>
+                                    <option value="F" {% if form.gender.value == 'F' %}selected{% endif %}>Female</option>
+                                    <option value="O" {% if form.gender.value == 'O' %}selected{% endif %}>Other</option>
+                                </select>
+                                {% if form.gender.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.gender.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="space-y-2">
+                                <label for="id_date_of_birth" class="block text-sm font-medium text-gray-700">Date of Birth</label>
+                                <input type="date" name="date_of_birth" id="id_date_of_birth" 
+                                       value="{{ form.date_of_birth.value|date:'Y-m-d'|default:'' }}" required
+                                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                       {% if form.date_of_birth.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">
+                                {% if form.date_of_birth.errors %}
+                                <p class="mt-1 text-sm text-red-600">{{ form.date_of_birth.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Phone -->
+                        <div class="space-y-2">
+                            <label for="id_phone" class="block text-sm font-medium text-gray-700">Phone</label>
+                            <input type="text" name="phone" id="id_phone" 
+                                   value="{{ form.phone.value|default:'' }}" required
+                                   class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                   {% if form.phone.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">
+                            {% if form.phone.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.phone.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Email -->
+                        <div class="space-y-2">
+                            <label for="id_email" class="block text-sm font-medium text-gray-700">Email</label>
+                            <input type="email" name="email" id="id_email" 
+                                   value="{{ form.email.value|default:'' }}"
+                                   class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                   {% if form.email.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">
+                            {% if form.email.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.email.errors.0 }}</p>
+                            {% endif %}
+                            <p class="mt-1 text-xs text-gray-500">Optional</p>
+                        </div>
+                        
+                        <!-- Address -->
+                        <div class="space-y-2">
+                            <label for="id_address" class="block text-sm font-medium text-gray-700">Address</label>
+                            <textarea name="address" id="id_address" rows="3" required
+                                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                      {% if form.address.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">{{ form.address.value|default:'' }}</textarea>
+                            {% if form.address.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.address.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Right Column - Medical Information -->
+                    <div class="space-y-6 mt-6 lg:mt-0">
+                        <h3 class="text-lg font-medium leading-6 text-gray-900 pb-2 border-b border-gray-200">Medical Information</h3>
+                        
+                        <!-- Chief Complaint -->
+                        <div class="space-y-2">
+                            <label for="id_chief_complaint" class="block text-sm font-medium text-gray-700">Chief Complaint</label>
+                            <textarea name="chief_complaint" id="id_chief_complaint" rows="3" required
+                                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                      {% if form.chief_complaint.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">{{ form.chief_complaint.value|default:'' }}</textarea>
+                            {% if form.chief_complaint.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.chief_complaint.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Medical History -->
+                        <div class="space-y-2">
+                            <label for="id_medical_history" class="block text-sm font-medium text-gray-700">Medical History</label>
+                            <textarea name="medical_history" id="id_medical_history" rows="3"
+                                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                      {% if form.medical_history.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">{{ form.medical_history.value|default:'' }}</textarea>
+                            {% if form.medical_history.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.medical_history.errors.0 }}</p>
+                            {% endif %}
+                            <p class="mt-1 text-xs text-gray-500">Optional</p>
+                        </div>
+                        
+                        <!-- Drug Allergies -->
+                        <div class="space-y-2">
+                            <label for="id_drug_allergies" class="block text-sm font-medium text-gray-700">Drug Allergies</label>
+                            <textarea name="drug_allergies" id="id_drug_allergies" rows="3"
+                                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                      {% if form.drug_allergies.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">{{ form.drug_allergies.value|default:'' }}</textarea>
+                            {% if form.drug_allergies.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.drug_allergies.errors.0 }}</p>
+                            {% endif %}
+                            <p class="mt-1 text-xs text-gray-500">Optional</p>
+                        </div>
+                        
+                        <!-- Previous Dental Work -->
+                        <div class="space-y-2">
+                            <label for="id_previous_dental_work" class="block text-sm font-medium text-gray-700">Previous Dental Work</label>
+                            <textarea name="previous_dental_work" id="id_previous_dental_work" rows="3"
+                                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm
+                                      {% if form.previous_dental_work.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">{{ form.previous_dental_work.value|default:'' }}</textarea>
+                            {% if form.previous_dental_work.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.previous_dental_work.errors.0 }}</p>
+                            {% endif %}
+                            <p class="mt-1 text-xs text-gray-500">Optional</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+                <a href="{% url 'patient_list' %}"
+                   class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    {% if patient %}Update{% else %}Save{% endif %} Patient
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

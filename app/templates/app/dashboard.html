@@ -1,0 +1,126 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Dashboard - Dental Practice Management System{% endblock %}
+
+{% block content %}
+<div class="py-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-semibold text-gray-900">Dashboard</h1>
+            <p class="mt-1 text-sm text-gray-500">Overview of your dental practice</p>
+        </div>
+        <div class="flex space-x-3">
+            <button class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                <i class="bi bi-share mr-2"></i>
+                Share
+            </button>
+            <button class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                <i class="bi bi-download mr-2"></i>
+                Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    {% if role == 'admin' %}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+                    <i class="bi bi-people text-xl text-white"></i>
+                </div>
+                <div class="ml-5">
+                    <p class="text-sm font-medium text-gray-500 truncate">Total Patients</p>
+                    <p class="mt-1 text-3xl font-semibold text-gray-900">{{ total_patients }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-green-500 rounded-md p-3">
+                    <i class="bi bi-calendar-check text-xl text-white"></i>
+                </div>
+                <div class="ml-5">
+                    <p class="text-sm font-medium text-gray-500 truncate">Total Appointments</p>
+                    <p class="mt-1 text-3xl font-semibold text-gray-900">{{ total_appointments }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
+                    <i class="bi bi-clipboard2-pulse text-xl text-white"></i>
+                </div>
+                <div class="ml-5">
+                    <p class="text-sm font-medium text-gray-500 truncate">Total Treatments</p>
+                    <p class="mt-1 text-3xl font-semibold text-gray-900">{{ total_treatments }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Today's Appointments -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-4 py-5 border-b border-gray-200 sm:px-6 flex justify-between items-center">
+            <h3 class="text-lg font-medium leading-6 text-gray-900">Today's Appointments</h3>
+            <a href="{% url 'appointment_create' %}" 
+               class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <i class="bi bi-plus mr-2"></i>
+                New Appointment
+            </a>
+        </div>
+        <div class="px-4 py-5 sm:p-6">
+            {% if today_appointments %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dentist</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for appointment in today_appointments %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <a href="{% url 'patient_detail' appointment.patient.pk %}" class="text-indigo-600 hover:text-indigo-900">
+                                    {{ appointment.patient.name }}
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ appointment.start_time|time:"g:i A" }} - {{ appointment.end_time|time:"g:i A" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ appointment.dentist.get_full_name }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    {% if appointment.status == 'scheduled' %}bg-green-100 text-green-800
+                                    {% elif appointment.status == 'completed' %}bg-blue-100 text-blue-800
+                                    {% elif appointment.status == 'cancelled' %}bg-red-100 text-red-800
+                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    {{ appointment.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <a href="{% url 'appointment_detail' appointment.pk %}" 
+                                   class="text-indigo-600 hover:text-indigo-900">View</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-sm text-gray-500 italic">No appointments scheduled for today.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 
