@@ -60,9 +60,17 @@ def patient_list(request):
     # Search functionality
     search_query = request.GET.get('search', '')
     if search_query:
-        patients = patients.filter(name__icontains=search_query) | \
-                  patients.filter(phone__icontains=search_query) | \
-                  patients.filter(email__icontains=search_query)
+        # Check if search query is a number (could be ID or phone)
+        is_numeric = search_query.isdigit()
+        
+        # Create a query that searches across name, phone, and ID (if numeric)
+        query = Q(name__icontains=search_query) | Q(phone__icontains=search_query)
+        
+        # Add ID search if the query is numeric
+        if is_numeric:
+            query |= Q(id=search_query)
+            
+        patients = patients.filter(query)
     
     context = {
         'patients': patients,
@@ -228,18 +236,27 @@ def appointment_create(request):
         initial = {}
         patient_id = request.GET.get('patient')
         date_param = request.GET.get('date')
+        dentist_id = request.GET.get('dentist')
         
         # Pre-fill with today's date by default
         if date_param:
-            initial['date'] = date_param
+            try:
+                # Try to parse the date parameter
+                parsed_date = datetime.strptime(date_param, '%Y-%m-%d').date()
+                initial['date'] = parsed_date
+            except ValueError:
+                # If the date format is invalid, use today's date
+                initial['date'] = date.today()
         else:
             initial['date'] = date.today()
             
         if patient_id:
             initial['patient'] = patient_id
             
-        # Auto-select the logged-in doctor if they are a dentist
-        if hasattr(request.user, 'profile') and request.user.profile.role == 'dentist':
+        if dentist_id:
+            initial['dentist'] = dentist_id
+        # Auto-select the logged-in doctor if they are a dentist and no dentist is specified
+        elif hasattr(request.user, 'profile') and request.user.profile.role == 'dentist':
             initial['dentist'] = request.user.id
             
         form = AppointmentForm(initial=initial)
@@ -374,7 +391,35 @@ def appointment_update(request, pk):
             messages.success(request, 'Appointment updated successfully!')
             return redirect('appointment_detail', pk=appointment.pk)
     else:
-        form = AppointmentForm(instance=appointment)
+        # Check if there are any URL parameters that should override the instance values
+        patient_id = request.GET.get('patient')
+        date_param = request.GET.get('date')
+        dentist_id = request.GET.get('dentist')
+        
+        # Create initial data dictionary with instance values
+        initial = {
+            'patient': appointment.patient.id,
+            'dentist': appointment.dentist.id,
+            'date': appointment.date,
+            'start_time': appointment.start_time,
+            'notes': appointment.notes
+        }
+        
+        # Override with URL parameters if present
+        if patient_id:
+            initial['patient'] = patient_id
+        if date_param:
+            try:
+                # Try to parse the date parameter
+                parsed_date = datetime.strptime(date_param, '%Y-%m-%d').date()
+                initial['date'] = parsed_date
+            except ValueError:
+                # Keep the original date if the format is invalid
+                pass
+        if dentist_id:
+            initial['dentist'] = dentist_id
+            
+        form = AppointmentForm(instance=appointment, initial=initial)
     
     # Get all patients for the dropdown
     patients = Patient.objects.all().order_by('name')

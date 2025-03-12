@@ -223,15 +223,44 @@
                 }
             });
         });
+        
+        // Add change event to patient dropdown
+        const patientSelect = document.getElementById('{{ form.patient.id_for_label }}');
+        patientSelect.addEventListener('change', function() {
+            // Only update if dentist and date are already selected
+            const dentistId = document.getElementById('{{ form.dentist.id_for_label }}').value;
+            const dateValue = document.getElementById('{{ form.date.id_for_label }}').value;
+            
+            if (dentistId && dateValue) {
+                updateTimeSlots();
+            }
+        });
     });
     
     function updateTimeSlots() {
         const dentistId = document.getElementById('{{ form.dentist.id_for_label }}').value;
         const dateValue = document.getElementById('{{ form.date.id_for_label }}').value;
+        const patientId = document.getElementById('{{ form.patient.id_for_label }}').value;
+        
+        console.log("Date selected:", dateValue); // Debug log
         
         if (dentistId && dateValue) {
-            // Redirect to the same page with updated query parameters
-            window.location.href = `{% url 'appointment_create' %}?dentist=${dentistId}&date=${dateValue}`;
+            // Build the query parameters
+            let queryParams = `dentist=${dentistId}&date=${encodeURIComponent(dateValue)}`;
+            
+            // Add patient ID if it exists
+            if (patientId) {
+                queryParams += `&patient=${patientId}`;
+            }
+            
+            // Log the URL we're about to navigate to
+            const url = {% if form.instance.pk %}`{% url 'appointment_update' form.instance.pk %}?${queryParams}`{% else %}`{% url 'appointment_create' %}?${queryParams}`{% endif %};
+            console.log("Navigating to:", url);
+            
+            // Navigate to the URL
+            window.location.href = url;
+        } else {
+            console.log("Missing required values:", { dentistId, dateValue });
         }
     }
 </script>
