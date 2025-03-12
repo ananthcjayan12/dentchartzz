@@ -227,11 +227,21 @@ def appointment_create(request):
         # Pre-fill patient if provided in GET parameters
         initial = {}
         patient_id = request.GET.get('patient')
-        date = request.GET.get('date')
+        date_param = request.GET.get('date')
+        
+        # Pre-fill with today's date by default
+        if date_param:
+            initial['date'] = date_param
+        else:
+            initial['date'] = date.today()
+            
         if patient_id:
             initial['patient'] = patient_id
-        if date:
-            initial['date'] = date
+            
+        # Auto-select the logged-in doctor if they are a dentist
+        if hasattr(request.user, 'profile') and request.user.profile.role == 'dentist':
+            initial['dentist'] = request.user.id
+            
         form = AppointmentForm(initial=initial)
     
     # Get all patients for the dropdown
@@ -240,10 +250,62 @@ def appointment_create(request):
     # Get all dentists for the dropdown
     dentists = User.objects.filter(profile__role='dentist')
     
+    # Get available time slots for the selected date and dentist
+    selected_date = request.GET.get('date', date.today().strftime('%Y-%m-%d'))
+    selected_dentist_id = request.GET.get('dentist', None)
+    
+    # If dentist is not in request but user is a dentist, use the logged-in user
+    if not selected_dentist_id and hasattr(request.user, 'profile') and request.user.profile.role == 'dentist':
+        selected_dentist_id = request.user.id
+        
+    # Generate time slots from 9 AM to 5 PM in 30-minute intervals
+    time_slots = []
+    start_hour = 9  # 9 AM
+    end_hour = 17   # 5 PM
+    
+    current_time = datetime.combine(date.today(), datetime.min.time()) + timedelta(hours=start_hour)
+    end_time = datetime.combine(date.today(), datetime.min.time()) + timedelta(hours=end_hour)
+    
+    while current_time < end_time:
+        time_slots.append({
+            'time': current_time.time(),
+            'display': current_time.strftime('%I:%M %p'),
+            'available': True,
+            'selected': False
+        })
+        current_time += timedelta(minutes=30)
+    
+    # Mark booked slots as unavailable
+    if selected_date and selected_dentist_id:
+        try:
+            selected_date_obj = datetime.strptime(selected_date, '%Y-%m-%d').date()
+            booked_appointments = Appointment.objects.filter(
+                dentist_id=selected_dentist_id,
+                date=selected_date_obj,
+                status='scheduled'
+            )
+            
+            for appointment in booked_appointments:
+                # Mark all slots that overlap with this appointment as unavailable
+                for slot in time_slots:
+                    slot_start = datetime.combine(selected_date_obj, slot['time'])
+                    slot_end = slot_start + timedelta(minutes=30)
+                    appointment_start = datetime.combine(selected_date_obj, appointment.start_time)
+                    appointment_end = datetime.combine(selected_date_obj, appointment.end_time)
+                    
+                    if (slot_start < appointment_end and slot_end > appointment_start):
+                        slot['available'] = False
+        except (ValueError, TypeError):
+            # Handle invalid date format
+            pass
+    
     context = {
         'form': form,
         'patients': patients,
         'dentists': dentists,
+        'time_slots': time_slots,
+        'selected_date': selected_date,
+        'selected_dentist_id': selected_dentist_id,
         'title': 'Schedule New Appointment',
     }
     return render(request, 'app/appointment_form.html', context)
@@ -320,11 +382,65 @@ def appointment_update(request, pk):
     # Get all dentists for the dropdown
     dentists = User.objects.filter(profile__role='dentist')
     
+    # Get available time slots for the selected date and dentist
+    selected_date = request.GET.get('date', appointment.date.strftime('%Y-%m-%d'))
+    selected_dentist_id = request.GET.get('dentist', str(appointment.dentist.id))
+    
+    # Generate time slots from 9 AM to 5 PM in 30-minute intervals
+    time_slots = []
+    start_hour = 9  # 9 AM
+    end_hour = 17   # 5 PM
+    
+    current_time = datetime.combine(date.today(), datetime.min.time()) + timedelta(hours=start_hour)
+    end_time = datetime.combine(date.today(), datetime.min.time()) + timedelta(hours=end_hour)
+    
+    while current_time < end_time:
+        time_slot = {
+            'time': current_time.time(),
+            'display': current_time.strftime('%I:%M %p'),
+            'available': True,
+            'selected': False
+        }
+        
+        # Check if this is the current appointment's time
+        if current_time.time().strftime('%H:%M') == appointment.start_time.strftime('%H:%M'):
+            time_slot['selected'] = True
+            
+        time_slots.append(time_slot)
+        current_time += timedelta(minutes=30)
+    
+    # Mark booked slots as unavailable (except for this appointment's slot)
+    if selected_date and selected_dentist_id:
+        try:
+            selected_date_obj = datetime.strptime(selected_date, '%Y-%m-%d').date()
+            booked_appointments = Appointment.objects.filter(
+                dentist_id=selected_dentist_id,
+                date=selected_date_obj,
+                status='scheduled'
+            ).exclude(pk=appointment.pk)  # Exclude current appointment
+            
+            for booked_appointment in booked_appointments:
+                # Mark all slots that overlap with this appointment as unavailable
+                for slot in time_slots:
+                    slot_start = datetime.combine(selected_date_obj, slot['time'])
+                    slot_end = slot_start + timedelta(minutes=30)
+                    appointment_start = datetime.combine(selected_date_obj, booked_appointment.start_time)
+                    appointment_end = datetime.combine(selected_date_obj, booked_appointment.end_time)
+                    
+                    if (slot_start < appointment_end and slot_end > appointment_start):
+                        slot['available'] = False
+        except (ValueError, TypeError):
+            # Handle invalid date format
+            pass
+    
     context = {
         'form': form,
         'appointment': appointment,
         'patients': patients,
         'dentists': dentists,
+        'time_slots': time_slots,
+        'selected_date': selected_date,
+        'selected_dentist_id': selected_dentist_id,
         'title': 'Update Appointment',
     }
     return render(request, 'app/appointment_form.html', context)
