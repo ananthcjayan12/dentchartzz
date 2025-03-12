@@ -150,6 +150,26 @@
                         {% endif %}
                     </div>
 
+                    <!-- Chief Complaint -->
+                    <div class="sm:col-span-6">
+                        <label for="chief_complaint" class="block text-sm font-medium text-gray-700">Chief Complaint</label>
+                        <div class="mt-1">
+                            <div class="flex space-x-2 mb-2">
+                                <select id="previous_complaints" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" onchange="selectPreviousComplaint()">
+                                    <option value="">Select previous complaint (optional)</option>
+                                    <!-- This will be populated via JavaScript when a patient is selected -->
+                                </select>
+                                <button type="button" onclick="clearPreviousComplaint()" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Clear
+                                </button>
+                            </div>
+                            <textarea name="chief_complaint" id="chief_complaint" rows="3"
+                                      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                      placeholder="Enter patient's main dental concern or reason for visit">{{ chief_complaint|default:'' }}</textarea>
+                        </div>
+                        <p class="mt-2 text-sm text-gray-500">Describe the patient's main dental concern or reason for visit</p>
+                    </div>
+
                     <!-- Notes -->
                     <div class="sm:col-span-6">
                         <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-gray-700">Notes</label>
@@ -366,34 +386,135 @@
     function updateTimeSlots() {
         const dentistId = document.getElementById('{{ form.dentist.id_for_label }}').value;
         const dateValue = document.getElementById('{{ form.date.id_for_label }}').value;
-        const patientId = document.getElementById('{{ form.patient.id_for_label }}').value;
+        const selectedTime = document.getElementById('selected_time_slot').value;
         
-        console.log("Date selected:", dateValue); // Debug log
+        if (!dentistId || !dateValue) {
+            return;
+        }
         
-        if (dentistId && dateValue) {
-            // Build the query parameters
-            let queryParams = `dentist=${dentistId}&date=${encodeURIComponent(dateValue)}`;
+        // Show loading state
+        const timeSlotsContainer = document.getElementById('time-slots-container');
+        timeSlotsContainer.innerHTML = '<div class="col-span-full text-center py-4"><i class="bi bi-hourglass-split animate-spin mr-2"></i> Loading available time slots...</div>';
+        
+        // Fetch available time slots
+        fetch(`/app/api/time-slots/?dentist=${dentistId}&date=${dateValue}&selected_time=${selectedTime}`)
+            .then(response => response.json())
+            .then(data => {
+                timeSlotsContainer.innerHTML = '';
+                
+                if (data.time_slots.length === 0) {
+                    timeSlotsContainer.innerHTML = '<div class="col-span-full text-center py-4 text-gray-500">No available time slots for this date.</div>';
+                    return;
+                }
+                
+                data.time_slots.forEach((slot, index) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'time-slot-wrapper';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'radio';
+                    input.name = '{{ form.start_time.name }}';
+                    input.id = `time-slot-${index + 1}`;
+                    input.value = slot.time;
+                    input.className = 'hidden time-slot-input';
+                    if (!slot.available) {
+                        input.disabled = true;
+                    }
+                    if (slot.selected) {
+                        input.checked = true;
+                    }
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `time-slot-${index + 1}`;
+                    label.className = `block p-2 text-center text-sm rounded-md cursor-pointer border ${
+                        slot.available 
+                            ? `border-gray-300 hover:bg-indigo-50 hover:border-indigo-300 ${slot.selected ? 'bg-indigo-100 border-indigo-500' : 'bg-white'}`
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`;
+                    label.textContent = slot.display;
+                    
+                    wrapper.appendChild(input);
+                    wrapper.appendChild(label);
+                    timeSlotsContainer.appendChild(wrapper);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching time slots:', error);
+                timeSlotsContainer.innerHTML = '<div class="col-span-full text-center py-4 text-red-500">Error loading time slots. Please try again.</div>';
+            });
+    }
+    
+    // Function to handle patient selection and show modal for new patient
+    document.getElementById('{{ form.patient.id_for_label }}').addEventListener('change', function() {
+        const patientSelect = this;
+        const selectedValue = patientSelect.value;
+        
+        if (selectedValue === 'new') {
+            // Show the new patient modal
+            document.getElementById('patientModal').classList.remove('hidden');
             
-            // Add patient ID if it exists
-            if (patientId) {
-                queryParams += `&patient=${patientId}`;
-            }
-            
-            // Log the URL we're about to navigate to
-            let url;
-            {% if form.instance.pk %}
-            url = "{% url 'appointment_update' form.instance.pk %}?" + queryParams;
-            {% else %}
-            url = "{% url 'appointment_create' %}?" + queryParams;
-            {% endif %}
-            console.log("Navigating to:", url);
-            
-            // Navigate to the URL
-            window.location.href = url;
-        } else {
-            console.log("Missing required values:", { dentistId, dateValue });
+            // Reset the select to the first option (empty)
+            patientSelect.value = '';
+        } else if (selectedValue) {
+            // Load previous chief complaints for this patient
+            loadPreviousComplaints(selectedValue);
+        }
+    });
+    
+    // Function to load previous chief complaints for a patient
+    function loadPreviousComplaints(patientId) {
+        const complaintsDropdown = document.getElementById('previous_complaints');
+        complaintsDropdown.innerHTML = '<option value="">Select previous complaint (optional)</option>';
+        
+        // Fetch previous complaints for this patient
+        fetch(`/app/api/patient/${patientId}/complaints/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.complaints && data.complaints.length > 0) {
+                    data.complaints.forEach(complaint => {
+                        const option = document.createElement('option');
+                        option.value = complaint;
+                        option.textContent = complaint.length > 50 ? complaint.substring(0, 50) + '...' : complaint;
+                        complaintsDropdown.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching previous complaints:', error);
+            });
+    }
+    
+    // Function to select a previous complaint
+    function selectPreviousComplaint() {
+        const complaintsDropdown = document.getElementById('previous_complaints');
+        const chiefComplaintField = document.getElementById('chief_complaint');
+        
+        if (complaintsDropdown.value) {
+            chiefComplaintField.value = complaintsDropdown.value;
         }
     }
+    
+    // Function to clear the chief complaint field
+    function clearPreviousComplaint() {
+        document.getElementById('chief_complaint').value = '';
+        document.getElementById('previous_complaints').value = '';
+    }
+    
+    // Initialize time slots on page load if dentist and date are selected
+    document.addEventListener('DOMContentLoaded', function() {
+        const dentistId = document.getElementById('{{ form.dentist.id_for_label }}').value;
+        const date = document.getElementById('{{ form.date.id_for_label }}').value;
+        
+        if (dentistId && date) {
+            updateTimeSlots();
+        }
+        
+        // Load previous complaints if a patient is already selected
+        const patientId = document.getElementById('{{ form.patient.id_for_label }}').value;
+        if (patientId && patientId !== 'new') {
+            loadPreviousComplaints(patientId);
+        }
+    });
 </script>
 
 <!-- New Patient Modal -->

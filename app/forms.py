@@ -28,6 +28,16 @@ class AppointmentForm(forms.ModelForm):
         widget=forms.NumberInput(attrs={'class': 'block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm'})
     )
     
+    # Add chief complaint field
+    chief_complaint = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'rows': 3, 
+            'class': 'block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm',
+            'placeholder': 'Enter patient\'s main dental concern or reason for visit'
+        })
+    )
+    
     class Meta:
         model = Appointment
         fields = ['patient', 'dentist', 'date', 'start_time', 'notes']

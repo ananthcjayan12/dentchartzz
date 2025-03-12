@@ -28,4 +28,8 @@ urlpatterns = [
     path('treatments/tooth/<int:tooth_id>/', views.get_tooth_treatments, name='get_tooth_treatments'),
     path('treatments/<int:pk>/', views.treatment_detail, name='treatment_detail'),
     path('treatments/<int:pk>/update/', views.treatment_update, name='treatment_update'),
+    
+    # API Endpoints
+    path('api/patient/<int:patient_id>/complaints/', views.get_patient_complaints, name='get_patient_complaints'),
+    path('api/time-slots/', views.get_time_slots, name='get_time_slots'),
 ] 

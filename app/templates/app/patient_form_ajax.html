@@ -71,12 +71,11 @@
 
         <!-- Date of Birth (Required) -->
         <div class="sm:col-span-3">
-            <label for="{{ form.date_of_birth.id_for_label }}" class="block text-sm font-medium text-gray-700">Date of Birth <span class="text-red-500">*</span></label>
+            <label for="{{ form.date_of_birth.id_for_label }}" class="block text-sm font-medium text-gray-700">Date of Birth</label>
             <div class="mt-1">
                 <input type="date" name="{{ form.date_of_birth.name }}" id="{{ form.date_of_birth.id_for_label }}" value="{{ form.date_of_birth.value|date:'Y-m-d'|default:'' }}"
                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-                       {% if form.date_of_birth.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}"
-                       required>
+                       {% if form.date_of_birth.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">
                 {% if form.date_of_birth.errors %}
                 <p class="mt-2 text-sm text-red-600">{{ form.date_of_birth.errors.0 }}</p>
                 {% endif %}
@@ -121,20 +120,6 @@
                           placeholder="Enter address (optional)">{{ form.address.value|default:'' }}</textarea>
                 {% if form.address.errors %}
                 <p class="mt-2 text-sm text-red-600">{{ form.address.errors.0 }}</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Chief Complaint (Required) -->
-        <div class="sm:col-span-6">
-            <label for="{{ form.chief_complaint.id_for_label }}" class="block text-sm font-medium text-gray-700">Chief Complaint <span class="text-red-500">*</span></label>
-            <div class="mt-1">
-                <textarea name="{{ form.chief_complaint.name }}" id="{{ form.chief_complaint.id_for_label }}" rows="3"
-                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
-                          {% if form.chief_complaint.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}"
-                          placeholder="Enter patient's main dental concern or reason for visit" required>{{ form.chief_complaint.value|default:'' }}</textarea>
-                {% if form.chief_complaint.errors %}
-                <p class="mt-2 text-sm text-red-600">{{ form.chief_complaint.errors.0 }}</p>
                 {% endif %}
             </div>
         </div>

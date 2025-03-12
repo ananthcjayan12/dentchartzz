@@ -284,6 +284,22 @@ def appointment_create(request):
         if form.is_valid():
             appointment = form.save(commit=False)
             appointment.status = 'scheduled'
+            
+            # Handle chief complaint
+            chief_complaint = request.POST.get('chief_complaint', '')
+            if chief_complaint:
+                # Add chief complaint to notes
+                if appointment.notes:
+                    appointment.notes += f"\n\nChief Complaint: {chief_complaint}"
+                else:
+                    appointment.notes = f"Chief Complaint: {chief_complaint}"
+                
+                # Also update patient's chief complaint if it's empty
+                patient = appointment.patient
+                if not patient.chief_complaint or not patient.chief_complaint.strip():
+                    patient.chief_complaint = chief_complaint
+                    patient.save()
+            
             appointment.save()
             messages.success(request, 'Appointment scheduled successfully!')
             return redirect('appointment_detail', pk=appointment.pk)
@@ -444,10 +460,47 @@ def appointment_update(request, pk):
     if request.method == 'POST':
         form = AppointmentForm(request.POST, instance=appointment)
         if form.is_valid():
-            form.save()
+            updated_appointment = form.save(commit=False)
+            
+            # Handle chief complaint
+            chief_complaint = request.POST.get('chief_complaint', '')
+            if chief_complaint:
+                # Check if there's already a chief complaint in the notes
+                if "Chief Complaint:" in updated_appointment.notes:
+                    # Replace the existing chief complaint
+                    notes_lines = updated_appointment.notes.split('\n')
+                    new_notes = []
+                    for line in notes_lines:
+                        if line.strip().startswith("Chief Complaint:"):
+                            new_notes.append(f"Chief Complaint: {chief_complaint}")
+                        else:
+                            new_notes.append(line)
+                    updated_appointment.notes = '\n'.join(new_notes)
+                else:
+                    # Add chief complaint to notes
+                    if updated_appointment.notes:
+                        updated_appointment.notes += f"\n\nChief Complaint: {chief_complaint}"
+                    else:
+                        updated_appointment.notes = f"Chief Complaint: {chief_complaint}"
+                
+                # Also update patient's chief complaint if it's empty
+                patient = updated_appointment.patient
+                if not patient.chief_complaint or not patient.chief_complaint.strip():
+                    patient.chief_complaint = chief_complaint
+                    patient.save()
+            
+            updated_appointment.save()
             messages.success(request, 'Appointment updated successfully!')
             return redirect('appointment_detail', pk=appointment.pk)
     else:
+        # Extract chief complaint from notes if it exists
+        chief_complaint = ""
+        if appointment.notes and "Chief Complaint:" in appointment.notes:
+            for line in appointment.notes.split('\n'):
+                if line.strip().startswith("Chief Complaint:"):
+                    chief_complaint = line.replace("Chief Complaint:", "").strip()
+                    break
+        
         # Check if there are any URL parameters that should override the instance values
         patient_id = request.GET.get('patient')
         date_param = request.GET.get('date')
@@ -544,6 +597,7 @@ def appointment_update(request, pk):
         'selected_date': selected_date,
         'selected_dentist_id': selected_dentist_id,
         'title': 'Update Appointment',
+        'chief_complaint': chief_complaint,
     }
     return render(request, 'app/appointment_form.html', context)
 
@@ -842,3 +896,95 @@ def treatment_update(request, pk):
         'referer': referer,
     }
     return render(request, 'app/treatment_update.html', context)
+
+# API Endpoints
+@login_required
+def get_patient_complaints(request, patient_id):
+    """API endpoint to get previous chief complaints for a patient"""
+    try:
+        patient = Patient.objects.get(pk=patient_id)
+        
+        # Get all non-empty chief complaints for this patient
+        complaints = []
+        if patient.chief_complaint and patient.chief_complaint.strip():
+            complaints.append(patient.chief_complaint)
+            
+        # Get chief complaints from previous appointments
+        appointment_complaints = Appointment.objects.filter(
+            patient=patient, 
+            notes__icontains='chief complaint'
+        ).values_list('notes', flat=True)
+        
+        for note in appointment_complaints:
+            if note and note.strip():
+                complaints.append(note)
+        
+        # Remove duplicates and limit to 5 most recent
+        unique_complaints = list(dict.fromkeys(complaints))[:5]
+        
+        return JsonResponse({'complaints': unique_complaints})
+    except Patient.DoesNotExist:
+        return JsonResponse({'error': 'Patient not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def get_time_slots(request):
+    """API endpoint to get available time slots for a dentist on a specific date"""
+    try:
+        dentist_id = request.GET.get('dentist')
+        date_str = request.GET.get('date')
+        selected_time = request.GET.get('selected_time', '')
+        
+        if not dentist_id or not date_str:
+            return JsonResponse({'error': 'Missing required parameters'}, status=400)
+        
+        # Parse the date
+        selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        
+        # Generate time slots from 9 AM to 5 PM in 30-minute intervals
+        time_slots = []
+        start_hour = 9  # 9 AM
+        end_hour = 17   # 5 PM
+        
+        current_time = datetime.combine(date.today(), datetime.min.time()) + timedelta(hours=start_hour)
+        end_time = datetime.combine(date.today(), datetime.min.time()) + timedelta(hours=end_hour)
+        
+        while current_time < end_time:
+            time_slots.append({
+                'time': current_time.time().strftime('%H:%M'),
+                'display': current_time.strftime('%I:%M %p'),
+                'available': True,
+                'selected': current_time.time().strftime('%H:%M') == selected_time
+            })
+            current_time += timedelta(minutes=30)
+        
+        # Mark booked slots as unavailable
+        booked_appointments = Appointment.objects.filter(
+            dentist_id=dentist_id,
+            date=selected_date,
+            status='scheduled'
+        )
+        
+        # If we're editing an existing appointment, exclude it from the booked appointments
+        appointment_id = request.GET.get('appointment_id')
+        if appointment_id:
+            booked_appointments = booked_appointments.exclude(pk=appointment_id)
+        
+        for appointment in booked_appointments:
+            # Mark all slots that overlap with this appointment as unavailable
+            for slot in time_slots:
+                slot_time = datetime.strptime(slot['time'], '%H:%M').time()
+                slot_start = datetime.combine(selected_date, slot_time)
+                slot_end = slot_start + timedelta(minutes=30)
+                appointment_start = datetime.combine(selected_date, appointment.start_time)
+                appointment_end = datetime.combine(selected_date, appointment.end_time)
+                
+                if (slot_start < appointment_end and slot_end > appointment_start):
+                    slot['available'] = False
+        
+        return JsonResponse({'time_slots': time_slots})
+    except ValueError:
+        return JsonResponse({'error': 'Invalid date format'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

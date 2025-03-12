@@ -29,13 +29,13 @@ class Patient(models.Model):
     name = models.CharField(max_length=100)
     age = models.IntegerField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
-    date_of_birth = models.DateField()
+    date_of_birth = models.DateField(blank=True, null=True)
     phone = models.CharField(max_length=15)
     email = models.EmailField(blank=True, null=True)
     address = models.TextField()
     
     # Medical Information
-    chief_complaint = models.TextField()
+    chief_complaint = models.TextField(blank=True, null=True)
     medical_history = models.TextField(blank=True, null=True)
     drug_allergies = models.TextField(blank=True, null=True)
     previous_dental_work = models.TextField(blank=True, null=True)
