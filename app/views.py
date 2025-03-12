@@ -10,6 +10,7 @@ from django.db.models import Q
 from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.template.loader import render_to_string
+import re
 
 # Create your views here.
 def login_view(request):
@@ -867,11 +868,35 @@ def treatment_update(request, pk):
             # Get the dentist's full name
             dentist_name = request.user.get_full_name() if request.user.get_full_name() else request.user.username
             
+            # Get the current appointment ID from the request if it exists
+            current_appointment_id = request.POST.get('current_appointment')
+            current_appointment = None
+            
+            if current_appointment_id:
+                try:
+                    current_appointment = Appointment.objects.get(pk=current_appointment_id)
+                except Appointment.DoesNotExist:
+                    current_appointment = treatment.appointment
+            else:
+                # Try to get the appointment ID from the referer URL
+                referer = request.POST.get('referer', '')
+                if 'appointment_detail' in referer:
+                    try:
+                        # Extract appointment ID from referer URL
+                        appointment_id_match = re.search(r'/appointments/(\d+)/', referer)
+                        if appointment_id_match:
+                            appointment_id = appointment_id_match.group(1)
+                            current_appointment = Appointment.objects.get(pk=appointment_id)
+                    except (Appointment.DoesNotExist, Exception):
+                        current_appointment = treatment.appointment
+                else:
+                    current_appointment = treatment.appointment
+            
             TreatmentHistory.objects.create(
                 treatment=treatment,
                 previous_status=previous_status,
                 new_status=status,
-                appointment=treatment.appointment,
+                appointment=current_appointment,
                 dentist=request.user,
                 notes=f"Status updated from {dict(Treatment.STATUS_CHOICES).get(previous_status)} to {dict(Treatment.STATUS_CHOICES).get(status)} by {dentist_name}"
             )

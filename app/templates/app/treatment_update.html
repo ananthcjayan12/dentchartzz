@@ -19,6 +19,11 @@
                 {% csrf_token %}
                 <input type="hidden" name="referer" value="{{ referer }}">
                 
+                <!-- Add hidden field for current appointment if it exists in the URL -->
+                {% if request.GET.current_appointment %}
+                <input type="hidden" name="current_appointment" value="{{ request.GET.current_appointment }}">
+                {% endif %}
+                
                 <div class="px-4 py-5 sm:p-6">
                     <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                         <div class="sm:col-span-3">

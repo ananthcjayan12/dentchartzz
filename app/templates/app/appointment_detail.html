@@ -370,7 +370,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <a href="{% url 'treatment_detail' treatment.id %}" class="text-indigo-600 hover:text-indigo-900 mr-2">View</a>
                                 {% if treatment.status != 'completed' and treatment.status != 'cancelled' %}
-                                <a href="{% url 'treatment_update' treatment.id %}" class="text-indigo-600 hover:text-indigo-900">Update</a>
+                                <a href="{% url 'treatment_update' treatment.id %}?current_appointment={{ appointment.id }}" class="text-indigo-600 hover:text-indigo-900">Update</a>
                                 {% endif %}
                             </td>
                         </tr>
@@ -433,7 +433,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <a href="{% url 'treatment_detail' treatment.id %}" class="text-indigo-600 hover:text-indigo-900 mr-2">View</a>
                                 {% if treatment.status != 'completed' and treatment.status != 'cancelled' %}
-                                <a href="{% url 'treatment_update' treatment.id %}" class="text-indigo-600 hover:text-indigo-900">Update</a>
+                                <a href="{% url 'treatment_update' treatment.id %}?current_appointment={{ appointment.id }}" class="text-indigo-600 hover:text-indigo-900">Update</a>
                                 {% endif %}
                             </td>
                         </tr>
