@@ -313,6 +313,32 @@
         // Array to store selected tooth IDs
         let selectedTeeth = [];
         
+        // Check URL parameters for pre-selected tooth
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+        
+        // Get tooth parameter from URL
+        const preSelectedToothNumber = getUrlParameter('tooth');
+        
+        // If a tooth is specified in the URL, select it automatically
+        if (preSelectedToothNumber) {
+            const toothElement = document.getElementById(`tooth-${preSelectedToothNumber}`);
+            if (toothElement) {
+                const toothContainer = toothElement.parentElement;
+                const toothId = toothContainer.dataset.toothId;
+                
+                // Add the tooth to selection
+                addToothToSelection(toothId);
+                
+                // Show the treatment form
+                treatmentFormContainer.classList.remove('hidden');
+            }
+        }
+        
         // Function to update the selected teeth count and list
         function updateSelectedTeeth() {
             // Update count
