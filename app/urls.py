@@ -9,6 +9,7 @@ urlpatterns = [
     # Patient URLs
     path('patients/', views.patient_list, name='patient_list'),
     path('patients/add/', views.patient_create, name='patient_create'),
+    path('patients/create-ajax/', views.patient_create_ajax, name='patient_create_ajax'),
     path('patients/<int:pk>/', views.patient_detail, name='patient_detail'),
     path('patients/<int:pk>/edit/', views.patient_update, name='patient_update'),
     

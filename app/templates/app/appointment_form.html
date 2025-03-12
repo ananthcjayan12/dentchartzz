@@ -52,6 +52,7 @@
                                     class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
                                     {% if form.patient.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">
                                 <option value="">Select a patient</option>
+                                <option value="new" class="font-semibold text-indigo-600">+ Add New Patient</option>
                                 {% for patient in patients %}
                                 <option value="{{ patient.pk }}" {% if patient.pk == form.patient.value|add:"0" %}selected{% endif %}>
                                     {{ patient.name }}
@@ -226,13 +227,138 @@
         
         // Add change event to patient dropdown
         const patientSelect = document.getElementById('{{ form.patient.id_for_label }}');
+        const newPatientModal = document.getElementById('newPatientModal');
+        const closePatientModal = document.getElementById('closePatientModal');
+        const newPatientFormContainer = document.getElementById('newPatientFormContainer');
+        
+        // Handle patient selection change
         patientSelect.addEventListener('change', function() {
             // Only update if dentist and date are already selected
             const dentistId = document.getElementById('{{ form.dentist.id_for_label }}').value;
             const dateValue = document.getElementById('{{ form.date.id_for_label }}').value;
             
-            if (dentistId && dateValue) {
+            if (this.value === 'new') {
+                // Show the modal
+                newPatientModal.classList.remove('hidden');
+                
+                // Load the patient form
+                fetch('/app/patients/create-ajax/')
+                    .then(response => response.text())
+                    .then(html => {
+                        newPatientFormContainer.innerHTML = html;
+                        
+                        // Add submit handler to the form
+                        const newPatientForm = document.getElementById('new-patient-form');
+                        if (newPatientForm) {
+                            newPatientForm.addEventListener('submit', function(e) {
+                                e.preventDefault();
+                                
+                                // Submit the form via AJAX
+                                const formData = new FormData(newPatientForm);
+                                
+                                // Get CSRF token from the main page form
+                                const mainFormCsrfToken = document.querySelector('#appointment-form [name=csrfmiddlewaretoken]').value;
+                                
+                                // Ensure the form data includes the CSRF token
+                                formData.set('csrfmiddlewaretoken', mainFormCsrfToken);
+                                
+                                // Debug form data
+                                console.log('Form data:');
+                                for (let pair of formData.entries()) {
+                                    console.log(pair[0] + ': ' + pair[1]);
+                                }
+                                
+                                fetch('/app/patients/create-ajax/', {
+                                    method: 'POST',
+                                    body: formData,
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                .then(response => {
+                                    console.log('Response status:', response.status);
+                                    return response.json();
+                                })
+                                .then(data => {
+                                    console.log('Response data:', data);
+                                    if (data.success) {
+                                        // Add the new patient to the dropdown and select it
+                                        const newOption = new Option(data.patient_name, data.patient_id, true, true);
+                                        patientSelect.add(newOption, 2); // Add after the "Add New Patient" option
+                                        patientSelect.value = data.patient_id;
+                                        
+                                        // Close the modal
+                                        newPatientModal.classList.add('hidden');
+                                        
+                                        // Show success message
+                                        alert('Patient created successfully!');
+                                    } else {
+                                        // Show the form with errors
+                                        newPatientFormContainer.innerHTML = data.html;
+                                        
+                                        // Re-attach the submit handler
+                                        const updatedForm = document.getElementById('new-patient-form');
+                                        if (updatedForm) {
+                                            updatedForm.addEventListener('submit', arguments.callee);
+                                        }
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    alert('An error occurred while creating the patient. Please try again.');
+                                });
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        newPatientFormContainer.innerHTML = '<p class="text-red-500">Error loading form. Please try again.</p>';
+                    });
+            } else if (dentistId && dateValue) {
                 updateTimeSlots();
+            }
+        });
+        
+        // Close modal when clicking the close button
+        closePatientModal.addEventListener('click', function() {
+            if (newPatientFormContainer.querySelector('#new-patient-form') && 
+                newPatientFormContainer.querySelector('#new-patient-form').checkValidity() === false) {
+                if (confirm('Are you sure you want to close the form? Any unsaved data will be lost.')) {
+                    newPatientModal.classList.add('hidden');
+                    // Reset the patient select to the first option if no patient was selected before
+                    if (patientSelect.value === 'new') {
+                        patientSelect.value = '';
+                    }
+                }
+            } else {
+                newPatientModal.classList.add('hidden');
+                // Reset the patient select to the first option if no patient was selected before
+                if (patientSelect.value === 'new') {
+                    patientSelect.value = '';
+                }
+            }
+        });
+        
+        // Close modal when clicking outside the modal content
+        newPatientModal.addEventListener('click', function(event) {
+            // Only close if specifically clicking on the background overlay, not any child elements
+            if (event.target === newPatientModal) {
+                const form = newPatientFormContainer.querySelector('#new-patient-form');
+                if (form && form.querySelector('input[name="name"]').value) {
+                    if (confirm('Are you sure you want to close the form? Any unsaved data will be lost.')) {
+                        newPatientModal.classList.add('hidden');
+                        // Reset the patient select to the first option if no patient was selected before
+                        if (patientSelect.value === 'new') {
+                            patientSelect.value = '';
+                        }
+                    }
+                } else {
+                    newPatientModal.classList.add('hidden');
+                    // Reset the patient select to the first option if no patient was selected before
+                    if (patientSelect.value === 'new') {
+                        patientSelect.value = '';
+                    }
+                }
             }
         });
     });
@@ -254,7 +380,12 @@
             }
             
             // Log the URL we're about to navigate to
-            const url = {% if form.instance.pk %}`{% url 'appointment_update' form.instance.pk %}?${queryParams}`{% else %}`{% url 'appointment_create' %}?${queryParams}`{% endif %};
+            let url;
+            {% if form.instance.pk %}
+            url = "{% url 'appointment_update' form.instance.pk %}?" + queryParams;
+            {% else %}
+            url = "{% url 'appointment_create' %}?" + queryParams;
+            {% endif %}
             console.log("Navigating to:", url);
             
             // Navigate to the URL
@@ -264,4 +395,24 @@
         }
     }
 </script>
+
+<!-- New Patient Modal -->
+<div id="newPatientModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation();">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-lg font-medium text-gray-900">Add New Patient</h3>
+            <button type="button" class="text-gray-400 hover:text-gray-500" id="closePatientModal">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="px-6 py-4" id="newPatientFormContainer">
+            <div class="animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div class="h-4 bg-gray-200 rounded w-5/6 mb-4"></div>
+                <div class="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %} 

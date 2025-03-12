@@ -7,8 +7,9 @@ from .models import UserProfile, Patient, Appointment, Treatment, Tooth, ToothCo
 from .forms import PatientForm, AppointmentForm, TreatmentForm
 from datetime import date, datetime, timedelta
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
+from django.template.loader import render_to_string
 
 # Create your views here.
 def login_view(request):
@@ -158,6 +159,42 @@ def patient_update(request, pk):
         'title': 'Edit Patient',
     }
     return render(request, 'app/patient_form.html', context)
+
+@login_required
+def patient_create_ajax(request):
+    """
+    AJAX view for creating a patient from the appointment form.
+    Returns JSON with the new patient's ID and name if successful,
+    or the form with errors if not.
+    """
+    if request.method == 'POST':
+        form = PatientForm(request.POST)
+        if form.is_valid():
+            patient = form.save()
+            return JsonResponse({
+                'success': True,
+                'patient_id': patient.id,
+                'patient_name': patient.name
+            })
+        else:
+            # Return the form with errors
+            html = render_to_string('app/patient_form_ajax.html', {
+                'form': form,
+            }, request=request)
+            return JsonResponse({
+                'success': False,
+                'html': html
+            })
+    else:
+        # Display the form
+        form = PatientForm()
+        html = render_to_string('app/patient_form_ajax.html', {
+            'form': form,
+        }, request=request)
+        return JsonResponse({
+            'success': True,
+            'html': html
+        }) if request.headers.get('X-Requested-With') == 'XMLHttpRequest' else HttpResponse(html)
 
 # Appointment Management Views
 @login_required
