@@ -697,7 +697,7 @@ def get_tooth_treatments(request, tooth_id):
                 'previous_status_display': dict(Treatment.STATUS_CHOICES).get(h.previous_status, 'Unknown'),
                 'new_status': h.new_status,
                 'new_status_display': dict(Treatment.STATUS_CHOICES).get(h.new_status, 'Unknown'),
-                'dentist': h.dentist.get_full_name() if h.dentist else 'Unknown',
+                'dentist': h.dentist.get_full_name() if h.dentist and h.dentist.get_full_name() else (h.dentist.username if h.dentist else 'Unknown'),
                 'appointment_date': h.appointment.date.strftime('%Y-%m-%d') if h.appointment else None,
                 'appointment_id': h.appointment.id if h.appointment else None,
                 'notes': h.notes
@@ -773,13 +773,16 @@ def treatment_update(request, pk):
         
         # Log the treatment history if status has changed
         if previous_status != status:
+            # Get the dentist's full name
+            dentist_name = request.user.get_full_name() if request.user.get_full_name() else request.user.username
+            
             TreatmentHistory.objects.create(
                 treatment=treatment,
                 previous_status=previous_status,
                 new_status=status,
                 appointment=treatment.appointment,
                 dentist=request.user,
-                notes=f"Status updated from {dict(Treatment.STATUS_CHOICES).get(previous_status)} to {dict(Treatment.STATUS_CHOICES).get(status)}"
+                notes=f"Status updated from {dict(Treatment.STATUS_CHOICES).get(previous_status)} to {dict(Treatment.STATUS_CHOICES).get(status)} by {dentist_name}"
             )
         
         messages.success(request, 'Treatment updated successfully')
