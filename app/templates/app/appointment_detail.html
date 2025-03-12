@@ -36,7 +36,7 @@
                 <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
                     <div class="sm:col-span-2">
                         <dt class="text-sm font-medium text-gray-500">Status</dt>
-                        <dd class="mt-1">
+                        <dd class="mt-1 flex items-center">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                 {% if appointment.status == 'scheduled' %}bg-green-100 text-green-800
                                 {% elif appointment.status == 'completed' %}bg-blue-100 text-blue-800
@@ -44,6 +44,20 @@
                                 {% else %}bg-yellow-100 text-yellow-800{% endif %}">
                                 {{ appointment.get_status_display }}
                             </span>
+                            
+                            <form method="post" action="{% url 'appointment_status_update' appointment.pk %}" class="ml-3 inline-flex items-center">
+                                {% csrf_token %}
+                                <select name="status" id="status" class="text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                                    {% for status_value, status_label in status_choices %}
+                                    <option value="{{ status_value }}" {% if status_value == appointment.status %}selected{% endif %}>
+                                        {{ status_label }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="ml-2 inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500">
+                                    Update
+                                </button>
+                            </form>
                         </dd>
                     </div>
                     <div>
@@ -203,7 +217,7 @@
                                 {% if tooth.quadrant == 1 %}
                                 <div class="tooth-container">
                                     <div class="tooth-number text-xs text-center mb-1">{{ tooth.number }}</div>
-                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %} {% if tooth.has_appointment_treatments %}current-appointment{% endif %}" id="tooth-{{ tooth.number }}">
+                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %} {% if tooth.has_appointment_treatments %}current-appointment{% endif %}" id="tooth-{{ tooth.number }}" data-tooth-id="{{ tooth.number }}">
                                         <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
                                             <polygon points="20,0 40,15 30,60 10,60 0,15" class="tooth-shape" />
                                             {% if tooth.treatment_counts.total > 0 %}
@@ -222,7 +236,7 @@
                                 {% if tooth.quadrant == 2 %}
                                 <div class="tooth-container">
                                     <div class="tooth-number text-xs text-center mb-1">{{ tooth.number }}</div>
-                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %} {% if tooth.has_appointment_treatments %}current-appointment{% endif %}" id="tooth-{{ tooth.number }}">
+                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %} {% if tooth.has_appointment_treatments %}current-appointment{% endif %}" id="tooth-{{ tooth.number }}" data-tooth-id="{{ tooth.number }}">
                                         <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
                                             <polygon points="20,0 40,15 30,60 10,60 0,15" class="tooth-shape" />
                                             {% if tooth.treatment_counts.total > 0 %}
@@ -245,7 +259,7 @@
                             {% for tooth in teeth %}
                                 {% if tooth.quadrant == 4 %}
                                 <div class="tooth-container">
-                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %} {% if tooth.has_appointment_treatments %}current-appointment{% endif %}" id="tooth-{{ tooth.number }}">
+                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %} {% if tooth.has_appointment_treatments %}current-appointment{% endif %}" id="tooth-{{ tooth.number }}" data-tooth-id="{{ tooth.number }}">
                                         <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
                                             <polygon points="20,60 40,45 30,0 10,0 0,45" class="tooth-shape" />
                                             {% if tooth.treatment_counts.total > 0 %}
@@ -435,30 +449,16 @@
 </div>
 
 <!-- Tooth Treatment History Modal -->
-<div id="treatment-history-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
-    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
-        <div class="px-4 py-5 border-b border-gray-200 sm:px-6 flex justify-between items-center">
-            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Treatment History</h3>
-            <button type="button" id="close-modal" class="text-gray-400 hover:text-gray-500">
-                <span class="sr-only">Close</span>
-                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+<div id="treatmentHistoryModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-lg font-medium text-gray-900" id="modalTitle">Treatment History</h3>
+            <button type="button" class="text-gray-400 hover:text-gray-500" id="closeModal">
+                <i class="bi bi-x-lg"></i>
             </button>
         </div>
-        <div class="px-4 py-5 sm:p-6 overflow-y-auto max-h-[calc(80vh-120px)]" id="modal-content">
+        <div class="px-6 py-4" id="modalContent">
             <!-- Content will be loaded dynamically -->
-            <div class="animate-pulse">
-                <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-                <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-                <div class="h-4 bg-gray-200 rounded w-5/6 mb-4"></div>
-                <div class="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
-            </div>
-        </div>
-        <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
-            <button type="button" id="close-modal-btn" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                Close
-            </button>
         </div>
     </div>
 </div>
@@ -522,66 +522,92 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Tab functionality
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
+        const modal = document.getElementById('treatmentHistoryModal');
+        const closeModal = document.getElementById('closeModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalContent = document.getElementById('modalContent');
         
-        tabButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                // Remove active class from all buttons
-                tabButtons.forEach(btn => btn.classList.remove('active', 'border-indigo-500', 'text-indigo-600'));
-                tabButtons.forEach(btn => btn.classList.add('border-transparent', 'text-gray-500'));
-                
-                // Add active class to clicked button
-                this.classList.add('active', 'border-indigo-500', 'text-indigo-600');
-                this.classList.remove('border-transparent', 'text-gray-500');
-                
-                // Hide all tab contents
-                tabContents.forEach(content => content.classList.add('hidden'));
-                
-                // Show the corresponding tab content
-                const contentId = this.id.replace('tab-', '') + '-content';
-                document.getElementById(contentId).classList.remove('hidden');
-            });
+        // Tab switching functionality
+        const tabAppointmentTreatments = document.getElementById('tab-appointment-treatments');
+        const tabAllTreatments = document.getElementById('tab-all-treatments');
+        const appointmentTreatmentsContent = document.getElementById('appointment-treatments-content');
+        const allTreatmentsContent = document.getElementById('all-treatments-content');
+        
+        tabAppointmentTreatments.addEventListener('click', function() {
+            // Update tab buttons
+            tabAppointmentTreatments.classList.add('active');
+            tabAppointmentTreatments.classList.add('border-indigo-500');
+            tabAppointmentTreatments.classList.add('text-indigo-600');
+            tabAppointmentTreatments.classList.remove('border-transparent');
+            tabAppointmentTreatments.classList.remove('text-gray-500');
+            
+            tabAllTreatments.classList.remove('active');
+            tabAllTreatments.classList.remove('border-indigo-500');
+            tabAllTreatments.classList.remove('text-indigo-600');
+            tabAllTreatments.classList.add('border-transparent');
+            tabAllTreatments.classList.add('text-gray-500');
+            
+            // Show/hide content
+            appointmentTreatmentsContent.classList.remove('hidden');
+            allTreatmentsContent.classList.add('hidden');
         });
-
-        // Tooth hover and click functionality
-        const teeth = document.querySelectorAll('.tooth');
-        const modal = document.getElementById('treatment-history-modal');
-        const modalTitle = document.getElementById('modal-title');
-        const modalContent = document.getElementById('modal-content');
-        const closeModalBtn = document.getElementById('close-modal');
-        const closeModalFooterBtn = document.getElementById('close-modal-btn');
         
-        teeth.forEach(tooth => {
+        tabAllTreatments.addEventListener('click', function() {
+            // Update tab buttons
+            tabAllTreatments.classList.add('active');
+            tabAllTreatments.classList.add('border-indigo-500');
+            tabAllTreatments.classList.add('text-indigo-600');
+            tabAllTreatments.classList.remove('border-transparent');
+            tabAllTreatments.classList.remove('text-gray-500');
+            
+            tabAppointmentTreatments.classList.remove('active');
+            tabAppointmentTreatments.classList.remove('border-indigo-500');
+            tabAppointmentTreatments.classList.remove('text-indigo-600');
+            tabAppointmentTreatments.classList.add('border-transparent');
+            tabAppointmentTreatments.classList.add('text-gray-500');
+            
+            // Show/hide content
+            appointmentTreatmentsContent.classList.add('hidden');
+            allTreatmentsContent.classList.remove('hidden');
+        });
+        
+        // Create CSRF token meta tag first if it doesn't exist
+        if (!document.querySelector('meta[name="csrf-token"]')) {
+            const metaTag = document.createElement('meta');
+            metaTag.setAttribute('name', 'csrf-token');
+            metaTag.setAttribute('content', '{{ csrf_token }}');
+            document.head.appendChild(metaTag);
+        }
+        
+        // Now it's safe to get the CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token }}';
+        
+        // Close modal when clicking the close button
+        closeModal.addEventListener('click', function() {
+            modal.classList.add('hidden');
+        });
+        
+        // Close modal when clicking outside the modal content
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+        
+        // Add click event to all tooth elements
+        document.querySelectorAll('.tooth').forEach(tooth => {
             tooth.addEventListener('click', function() {
-                const toothId = this.id.replace('tooth-', '');
-                // Store patient ID in a JavaScript variable to avoid template syntax issues
+                // Get the tooth ID from the data attribute or the ID
+                const toothId = this.getAttribute('data-tooth-id') || this.id.replace('tooth-', '');
                 const patientId = "{{ appointment.patient.id }}";
                 
                 // Show modal
                 modal.classList.remove('hidden');
                 modalTitle.textContent = `Treatment History for Tooth ${toothId}`;
                 
-                // Fetch treatment history for this tooth
+                // Fetch and display treatment history
                 fetchToothTreatmentHistory(toothId, patientId);
             });
-        });
-        
-        // Close modal functionality
-        closeModalBtn.addEventListener('click', function() {
-            modal.classList.add('hidden');
-        });
-        
-        closeModalFooterBtn.addEventListener('click', function() {
-            modal.classList.add('hidden');
-        });
-        
-        // Close modal when clicking outside
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-            }
         });
         
         // Function to fetch treatment history
@@ -678,13 +704,83 @@
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${treatment.condition_name}</td>
                                         <td class="px-4 py-2 text-sm text-gray-900">${treatment.description}</td>
                                         <td class="px-4 py-2 whitespace-nowrap">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
-                                                ${treatment.status_display}
-                                            </span>
+                                            <div class="flex items-center">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+                                                    ${treatment.status_display}
+                                                </span>
+                                                <form method="post" action="/app/treatments/${treatment.id}/update/" class="ml-2 inline-flex items-center treatment-update-form">
+                                                    <input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">
+                                                    <input type="hidden" name="description" value="${treatment.description}">
+                                                    <input type="hidden" name="cost" value="${treatment.cost}">
+                                                    <input type="hidden" name="appointment" value="{{ appointment.id }}">
+                                                    <input type="hidden" name="referer" value="{{ request.path }}">
+                                                    <select name="status" class="text-xs border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5 pl-1 pr-6">
+                                                        <option value="planned" ${treatment.status === 'planned' ? 'selected' : ''}>Planned</option>
+                                                        <option value="in_progress" ${treatment.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                                                        <option value="completed" ${treatment.status === 'completed' ? 'selected' : ''}>Completed</option>
+                                                        <option value="cancelled" ${treatment.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                                                    </select>
+                                                    <button type="submit" class="ml-1 text-xs text-indigo-600 hover:text-indigo-900">
+                                                        Update
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${treatment.created_at}</td>
                                     </tr>
                                 `;
+                                
+                                // Add treatment history if available
+                                if (treatment.history && treatment.history.length > 0) {
+                                    html += `
+                                        <tr class="bg-gray-50">
+                                            <td colspan="4" class="px-4 py-2">
+                                                <div class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Treatment History</div>
+                                                <div class="space-y-2">
+                                    `;
+                                    
+                                    treatment.history.forEach(historyItem => {
+                                        let prevStatusClass = '';
+                                        if (historyItem.previous_status === 'planned') prevStatusClass = 'bg-yellow-100 text-yellow-800';
+                                        else if (historyItem.previous_status === 'in_progress') prevStatusClass = 'bg-blue-100 text-blue-800';
+                                        else if (historyItem.previous_status === 'completed') prevStatusClass = 'bg-green-100 text-green-800';
+                                        else if (historyItem.previous_status === 'cancelled') prevStatusClass = 'bg-red-100 text-red-800';
+                                        else prevStatusClass = 'bg-gray-100 text-gray-800';
+                                        
+                                        let newStatusClass = '';
+                                        if (historyItem.new_status === 'planned') newStatusClass = 'bg-yellow-100 text-yellow-800';
+                                        else if (historyItem.new_status === 'in_progress') newStatusClass = 'bg-blue-100 text-blue-800';
+                                        else if (historyItem.new_status === 'completed') newStatusClass = 'bg-green-100 text-green-800';
+                                        else newStatusClass = 'bg-red-100 text-red-800';
+                                        
+                                        html += `
+                                            <div class="flex items-center text-sm">
+                                                <span class="text-gray-500 mr-2">${historyItem.date}</span>
+                                                <div class="flex items-center">
+                                                    ${historyItem.previous_status ? 
+                                                        `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${prevStatusClass}">
+                                                            ${historyItem.previous_status_display}
+                                                        </span>` : 
+                                                        `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                            Initial
+                                                        </span>`
+                                                    }
+                                                    <i class="bi bi-arrow-right mx-2 text-gray-400"></i>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${newStatusClass}">
+                                                        ${historyItem.new_status_display}
+                                                    </span>
+                                                </div>
+                                                <span class="ml-2 text-gray-500">by ${historyItem.dentist}</span>
+                                            </div>
+                                        `;
+                                    });
+                                    
+                                    html += `
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }
                             });
                             
                             html += `
@@ -706,6 +802,23 @@
                         `;
                         
                         modalContent.innerHTML = html;
+                        
+                        // Add event listeners to the treatment update forms
+                        document.querySelectorAll('.treatment-update-form').forEach(form => {
+                            form.addEventListener('submit', function(e) {
+                                // Make sure the CSRF token is set correctly
+                                const csrfInput = this.querySelector('input[name="csrfmiddlewaretoken"]');
+                                if (csrfInput) {
+                                    // Get the CSRF token from the meta tag or use the Django template variable as fallback
+                                    const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
+                                    if (csrfMetaTag) {
+                                        csrfInput.value = csrfMetaTag.getAttribute('content');
+                                    } else {
+                                        csrfInput.value = '{{ csrf_token }}';
+                                    }
+                                }
+                            });
+                        });
                     } else {
                         modalContent.innerHTML = `
                             <div class="text-center py-6">

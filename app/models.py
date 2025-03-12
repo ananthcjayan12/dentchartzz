@@ -138,3 +138,21 @@ class Treatment(models.Model):
     def __str__(self):
         tooth_info = f" - Tooth {self.tooth.number}" if self.tooth else ""
         return f"{self.patient.name}{tooth_info} - {self.condition.name}"
+
+class TreatmentHistory(models.Model):
+    """Model to track treatment status changes over time"""
+    treatment = models.ForeignKey(Treatment, on_delete=models.CASCADE, related_name='history')
+    previous_status = models.CharField(max_length=20, choices=Treatment.STATUS_CHOICES, null=True, blank=True)
+    new_status = models.CharField(max_length=20, choices=Treatment.STATUS_CHOICES)
+    appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='treatment_history')
+    dentist = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='treatment_history')
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        previous = self.get_previous_status_display() if self.previous_status else "None"
+        return f"{self.treatment} - Status changed from {previous} to {self.get_new_status_display()}"
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name_plural = "Treatment histories"

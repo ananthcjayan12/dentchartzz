@@ -19,6 +19,7 @@ urlpatterns = [
     path('appointments/<int:pk>/', views.appointment_detail, name='appointment_detail'),
     path('appointments/<int:pk>/edit/', views.appointment_update, name='appointment_update'),
     path('appointments/<int:pk>/cancel/', views.appointment_cancel, name='appointment_cancel'),
+    path('appointments/<int:pk>/status/', views.appointment_status_update, name='appointment_status_update'),
     
     # Dental Chart and Treatment URLs
     path('patients/<int:patient_id>/dental-chart/', views.dental_chart, name='dental_chart'),

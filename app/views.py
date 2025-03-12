@@ -3,11 +3,12 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
-from .models import UserProfile, Patient, Appointment, Treatment, Tooth, ToothCondition
+from .models import UserProfile, Patient, Appointment, Treatment, Tooth, ToothCondition, TreatmentHistory
 from .forms import PatientForm, AppointmentForm, TreatmentForm
 from datetime import date, datetime, timedelta
 from django.db.models import Q
 from django.http import JsonResponse
+from django.urls import reverse
 
 # Create your views here.
 def login_view(request):
@@ -166,6 +167,21 @@ def appointment_list(request):
     dentist_filter = request.GET.get('dentist')
     status_filter = request.GET.get('status')
     
+    # Set default filters if none provided
+    today = date.today()
+    
+    # Default to today's date if no date filter
+    if not date_filter:
+        date_filter = today.strftime('%Y-%m-%d')
+    
+    # Default to logged-in user if they are a dentist and no dentist filter
+    if not dentist_filter and hasattr(request.user, 'profile') and request.user.profile.role == 'dentist':
+        dentist_filter = str(request.user.id)
+    
+    # Default to scheduled appointments if no status filter
+    if not status_filter:
+        status_filter = 'scheduled'
+    
     # Base queryset
     appointments = Appointment.objects.all().order_by('date', 'start_time')
     
@@ -184,7 +200,10 @@ def appointment_list(request):
         'appointments': appointments,
         'dentists': dentists,
         'status_choices': Appointment.STATUS_CHOICES,
-        'current_date': date_filter or date.today(),
+        'current_date': date_filter,
+        'default_date': today.strftime('%Y-%m-%d'),
+        'default_dentist': dentist_filter,
+        'default_status': status_filter,
     }
     return render(request, 'app/appointment_list.html', context)
 
@@ -377,6 +396,7 @@ def appointment_detail(request, pk):
         'appointment_treatments': appointment_treatments,
         'all_patient_treatments': all_patient_treatments,
         'teeth': teeth,
+        'status_choices': Appointment.STATUS_CHOICES,
     }
     return render(request, 'app/appointment_detail.html', context)
 
@@ -506,6 +526,26 @@ def appointment_cancel(request, pk):
     return render(request, 'app/appointment_cancel.html', context)
 
 @login_required
+def appointment_status_update(request, pk):
+    appointment = get_object_or_404(Appointment, pk=pk)
+    
+    if request.method == 'POST':
+        new_status = request.POST.get('status')
+        if new_status in dict(Appointment.STATUS_CHOICES):
+            appointment.status = new_status
+            appointment.save()
+            messages.success(request, f'Appointment status updated to {appointment.get_status_display()}!')
+        else:
+            messages.error(request, 'Invalid status provided!')
+        return redirect('appointment_detail', pk=appointment.pk)
+    
+    context = {
+        'appointment': appointment,
+        'status_choices': Appointment.STATUS_CHOICES,
+    }
+    return render(request, 'app/appointment_status_update.html', context)
+
+@login_required
 def dental_chart(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     
@@ -628,62 +668,72 @@ def add_treatment(request, patient_id):
 
 @login_required
 def get_tooth_treatments(request, tooth_id):
-    """
-    API endpoint to get all treatments for a specific tooth.
-    Accepts an optional patient_id query parameter to filter by patient.
-    Returns JSON data with tooth information and treatments.
-    """
-    try:
-        tooth = get_object_or_404(Tooth, number=tooth_id)
+    tooth = get_object_or_404(Tooth, number=tooth_id)
+    
+    # Get patient_id from query parameters if provided
+    patient_id = request.GET.get('patient_id')
+    
+    if patient_id:
+        # Get treatments for this tooth and patient
+        treatments = Treatment.objects.filter(
+            tooth=tooth,
+            patient_id=patient_id
+        ).order_by('-created_at')
+    else:
+        # Get all treatments for this tooth
+        treatments = Treatment.objects.filter(tooth=tooth).order_by('-created_at')
+    
+    # Prepare treatment data
+    treatment_data = []
+    for treatment in treatments:
+        # Get treatment history
+        history = TreatmentHistory.objects.filter(treatment=treatment).order_by('-created_at')
+        history_data = []
         
-        # Check if patient_id is provided in the query parameters
-        patient_id = request.GET.get('patient_id')
-        
-        if patient_id:
-            # Filter treatments by tooth and patient
-            treatments = Treatment.objects.filter(
-                tooth=tooth,
-                patient_id=patient_id
-            ).order_by('-created_at')
-        else:
-            # Get all treatments for this tooth
-            treatments = Treatment.objects.filter(
-                tooth=tooth
-            ).order_by('-created_at')
-        
-        # Prepare treatment data for JSON response
-        treatment_data = []
-        for treatment in treatments:
-            treatment_data.append({
-                'id': treatment.id,
-                'condition_name': treatment.condition.name,
-                'description': treatment.description,
-                'status': treatment.status,
-                'status_display': treatment.get_status_display(),
-                'cost': float(treatment.cost),
-                'created_at': treatment.created_at.strftime('%b %d, %Y'),
-                'appointment_id': treatment.appointment.id if treatment.appointment else None,
-                'appointment_date': treatment.appointment.date.strftime('%b %d, %Y') if treatment.appointment else None,
+        for h in history:
+            history_data.append({
+                'date': h.created_at.strftime('%Y-%m-%d %H:%M'),
+                'previous_status': h.previous_status,
+                'previous_status_display': dict(Treatment.STATUS_CHOICES).get(h.previous_status, 'Unknown'),
+                'new_status': h.new_status,
+                'new_status_display': dict(Treatment.STATUS_CHOICES).get(h.new_status, 'Unknown'),
+                'dentist': h.dentist.get_full_name() if h.dentist else 'Unknown',
+                'appointment_date': h.appointment.date.strftime('%Y-%m-%d') if h.appointment else None,
+                'appointment_id': h.appointment.id if h.appointment else None,
+                'notes': h.notes
             })
         
-        # Prepare response data
-        data = {
-            'tooth_id': tooth.number,
-            'tooth_name': tooth.name,
-            'treatments': treatment_data
-        }
-        
-        return JsonResponse(data)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        treatment_data.append({
+            'id': treatment.id,
+            'condition_name': treatment.condition.name,
+            'description': treatment.description,
+            'status': treatment.status,
+            'status_display': treatment.get_status_display(),
+            'cost': float(treatment.cost),
+            'created_at': treatment.created_at.strftime('%Y-%m-%d'),
+            'appointment_date': treatment.appointment.date.strftime('%Y-%m-%d') if treatment.appointment else None,
+            'appointment_id': treatment.appointment.id if treatment.appointment else None,
+            'history': history_data
+        })
+    
+    # Return JSON response
+    return JsonResponse({
+        'tooth_id': tooth_id,
+        'tooth_name': tooth.name,
+        'treatments': treatment_data
+    })
 
 @login_required
 def treatment_detail(request, pk):
     treatment = get_object_or_404(Treatment, pk=pk)
     
+    # Get treatment history
+    treatment_history = TreatmentHistory.objects.filter(treatment=treatment).order_by('-created_at')
+    
     context = {
         'treatment': treatment,
-        'patient': treatment.patient,
+        'treatment_history': treatment_history,
+        'referer': request.META.get('HTTP_REFERER', reverse('patient_detail', args=[treatment.patient.id]))
     }
     return render(request, 'app/treatment_detail.html', context)
 
@@ -695,6 +745,7 @@ def treatment_update(request, pk):
         status = request.POST.get('status')
         description = request.POST.get('description')
         cost = request.POST.get('cost', 0)
+        appointment_id = request.POST.get('appointment')
         
         # Handle empty cost value
         try:
@@ -702,18 +753,43 @@ def treatment_update(request, pk):
         except ValueError:
             cost = treatment.cost
         
+        # Store the previous status for history logging
+        previous_status = treatment.status
+        
         # Update the treatment
         treatment.status = status
         treatment.description = description
         treatment.cost = cost
+        
+        # Update the appointment if provided
+        if appointment_id:
+            try:
+                appointment = Appointment.objects.get(pk=appointment_id)
+                treatment.appointment = appointment
+            except Appointment.DoesNotExist:
+                pass
+        
         treatment.save()
+        
+        # Log the treatment history if status has changed
+        if previous_status != status:
+            TreatmentHistory.objects.create(
+                treatment=treatment,
+                previous_status=previous_status,
+                new_status=status,
+                appointment=treatment.appointment,
+                dentist=request.user,
+                notes=f"Status updated from {dict(Treatment.STATUS_CHOICES).get(previous_status)} to {dict(Treatment.STATUS_CHOICES).get(status)}"
+            )
         
         messages.success(request, 'Treatment updated successfully')
         
         # Redirect based on where the user came from
         referer = request.POST.get('referer', '')
-        if 'appointment' in referer:
-            return redirect('appointment_detail', pk=treatment.appointment.id if treatment.appointment else treatment.patient.id)
+        if referer:
+            return redirect(referer)
+        elif treatment.appointment:
+            return redirect('appointment_detail', pk=treatment.appointment.id)
         else:
             return redirect('patient_detail', pk=treatment.patient.id)
     
