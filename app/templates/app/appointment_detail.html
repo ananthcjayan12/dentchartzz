@@ -204,9 +204,14 @@
         </div>
     </div>
 
-    <!-- Treatments Section -->
-    <div class="px-4 py-5 border-t border-gray-200 sm:px-6">
-        <h4 class="text-lg font-medium text-gray-900 mb-4">Treatments</h4>
+    <!-- Payment Information -->
+    {% include 'app/partials/payment_card.html' %}
+
+    <!-- Treatments -->
+    <div class="bg-white shadow overflow-hidden rounded-lg mt-6">
+        <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+            <h3 class="text-lg font-medium leading-6 text-gray-900">Treatments</h3>
+        </div>
         
         <!-- Treatment Plan Visualization -->
         <div class="mb-6">

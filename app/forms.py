@@ -1,5 +1,6 @@
 from django import forms
-from .models import Patient, Appointment, Treatment
+from django.forms import inlineformset_factory
+from .models import Patient, Appointment, Treatment, Payment, PaymentItem
 
 class PatientForm(forms.ModelForm):
     class Meta:
@@ -116,4 +117,44 @@ class TreatmentForm(forms.ModelForm):
         
         if patient:
             # Filter appointments to only show those for this patient
-            self.fields['appointment'].queryset = Appointment.objects.filter(patient=patient) 
+            self.fields['appointment'].queryset = Appointment.objects.filter(patient=patient)
+
+class PaymentForm(forms.ModelForm):
+    class Meta:
+        model = Payment
+        fields = ['payment_date', 'payment_method', 'total_amount', 'amount_paid', 'notes']
+        widgets = {
+            'payment_date': forms.DateInput(attrs={'type': 'date'}),
+            'notes': forms.Textarea(attrs={'rows': 3}),
+            'total_amount': forms.NumberInput(attrs={'readonly': 'readonly', 'id': 'id_total_amount'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        patient = kwargs.pop('patient', None)
+        appointment = kwargs.pop('appointment', None)
+        super().__init__(*args, **kwargs)
+        
+        # Add data-* attributes for JavaScript functionality
+        self.fields['amount_paid'].widget.attrs.update({'id': 'id_amount_paid'})
+        
+        # If this is a new payment, initialize with default values
+        if not self.instance.pk:
+            # Calculate total treatment cost for the patient
+            from django.db.models import Sum
+            if patient:
+                total_cost = Treatment.objects.filter(patient=patient).aggregate(Sum('cost'))['cost__sum'] or 0
+                total_paid = Payment.objects.filter(patient=patient).aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+                self.fields['total_amount'].initial = total_cost - total_paid
+
+# Create a formset for PaymentItems
+PaymentItemFormSet = inlineformset_factory(
+    Payment, 
+    PaymentItem, 
+    fields=('description', 'amount', 'treatment'),
+    extra=1,
+    can_delete=True,
+    widgets={
+        'description': forms.TextInput(attrs={'class': 'form-control'}),
+        'amount': forms.NumberInput(attrs={'class': 'form-control payment-item-amount', 'step': '0.01'}),
+    }
+) 
