@@ -1,7 +1,11 @@
 from django.urls import path
 from . import views
+from .health import health_check
 
 urlpatterns = [
+    # Health check endpoint
+    path('health/', health_check, name='health_check'),
+    
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),

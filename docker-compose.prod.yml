@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgres://dentchartzz:dentchartzz_password@db:5432/dentchartzz_db
+      - DEBUG=False
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-#75##%huc7(f^loyov77=pga%^1b^*bjnl-9e19r&c9z(jm18(}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - static_volume:/app/static
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             python init_db.py &&
+             gunicorn core.wsgi:application --bind 0.0.0.0:8000"
+
+  db:
+    image: postgres:14
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=dentchartzz
+      - POSTGRES_PASSWORD=dentchartzz_password
+      - POSTGRES_DB=dentchartzz_db
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:
