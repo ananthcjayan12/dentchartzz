@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Patient, Appointment, Tooth, ToothCondition, Treatment, UserProfile
+from .models import Patient, Appointment, Tooth, ToothCondition, Treatment, UserProfile, TreatmentHistory, Payment, PaymentItem
 
 # Register your models here.
 @admin.register(UserProfile)
@@ -38,3 +38,23 @@ class TreatmentAdmin(admin.ModelAdmin):
     list_filter = ('status', 'condition', 'created_at')
     search_fields = ('patient__name', 'description')
     date_hierarchy = 'created_at'
+
+@admin.register(TreatmentHistory)
+class TreatmentHistoryAdmin(admin.ModelAdmin):
+    list_display = ('treatment', 'previous_status', 'new_status', 'dentist', 'created_at')
+    list_filter = ('new_status', 'created_at')
+    search_fields = ('treatment__patient__name', 'notes')
+    date_hierarchy = 'created_at'
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ('patient', 'payment_date', 'total_amount', 'amount_paid', 'payment_method', 'created_by')
+    list_filter = ('payment_method', 'payment_date', 'created_at')
+    search_fields = ('patient__name', 'notes')
+    date_hierarchy = 'payment_date'
+
+@admin.register(PaymentItem)
+class PaymentItemAdmin(admin.ModelAdmin):
+    list_display = ('payment', 'description', 'amount', 'treatment')
+    list_filter = ('payment__payment_date',)
+    search_fields = ('description', 'payment__patient__name')

@@ -33,6 +33,13 @@ urlpatterns = [
     path('treatments/<int:pk>/', views.treatment_detail, name='treatment_detail'),
     path('treatments/<int:pk>/update/', views.treatment_update, name='treatment_update'),
     
+    # Payment URLs
+    path('patients/<int:patient_id>/payments/', views.payment_list, name='payment_list'),
+    path('patients/<int:patient_id>/payments/create/', views.payment_create, name='payment_create'),
+    path('patients/<int:patient_id>/appointments/<int:appointment_id>/payments/create/', views.payment_create, name='payment_create_from_appointment'),
+    path('payments/<int:payment_id>/', views.payment_detail, name='payment_detail'),
+    path('api/patients/<int:patient_id>/balance/', views.get_patient_balance, name='get_patient_balance'),
+    
     # API Endpoints
     path('api/patient/<int:patient_id>/complaints/', views.get_patient_complaints, name='get_patient_complaints'),
     path('api/time-slots/', views.get_time_slots, name='get_time_slots'),

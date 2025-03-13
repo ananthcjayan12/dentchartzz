@@ -3,10 +3,10 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User
-from .models import UserProfile, Patient, Appointment, Treatment, Tooth, ToothCondition, TreatmentHistory
-from .forms import PatientForm, AppointmentForm, TreatmentForm
+from .models import UserProfile, Patient, Appointment, Treatment, Tooth, ToothCondition, TreatmentHistory, Payment, PaymentItem
+from .forms import PatientForm, AppointmentForm, TreatmentForm, PaymentForm, PaymentItemFormSet
 from datetime import date, datetime, timedelta
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.template.loader import render_to_string
@@ -101,8 +101,17 @@ def patient_create(request):
 @login_required
 def patient_detail(request, pk):
     patient = get_object_or_404(Patient, pk=pk)
-    appointments = Appointment.objects.filter(patient=patient).order_by('-date')
+    appointments = Appointment.objects.filter(patient=patient).order_by('-date', '-start_time')
     treatments = Treatment.objects.filter(patient=patient).order_by('-created_at')
+    
+    # Get payment information
+    payments = Payment.objects.filter(patient=patient).order_by('-payment_date')
+    recent_payments = payments[:5]  # Get the 5 most recent payments
+    
+    # Calculate totals
+    total_treatment_cost = payments.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_paid = payments.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+    balance_due = total_treatment_cost - total_paid
     
     # Get all teeth for the dental chart
     teeth = Tooth.objects.all().order_by('quadrant', 'position')
@@ -137,6 +146,10 @@ def patient_detail(request, pk):
         'patient': patient,
         'appointments': appointments,
         'treatments': treatments,
+        'recent_payments': recent_payments,
+        'total_treatment_cost': total_treatment_cost,
+        'total_paid': total_paid,
+        'balance_due': balance_due,
         'teeth': teeth,
     }
     return render(request, 'app/patient_detail.html', context)
@@ -403,12 +416,20 @@ def appointment_create(request):
 @login_required
 def appointment_detail(request, pk):
     appointment = get_object_or_404(Appointment, pk=pk)
+    treatments = Treatment.objects.filter(appointment=appointment)
     
-    # Get treatments for this specific appointment
-    appointment_treatments = Treatment.objects.filter(appointment=appointment)
+    # Get status choices for the form
+    status_choices = Appointment.STATUS_CHOICES
     
-    # Get all treatments for this patient
-    all_patient_treatments = Treatment.objects.filter(patient=appointment.patient).order_by('-created_at')
+    # Get payment information
+    patient = appointment.patient
+    payments = Payment.objects.filter(patient=patient).order_by('-payment_date')
+    recent_payments = payments[:5]  # Get the 5 most recent payments
+    
+    # Calculate totals
+    total_treatment_cost = payments.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_paid = payments.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+    balance_due = total_treatment_cost - total_paid
     
     # Get all teeth for the dental chart
     teeth = Tooth.objects.all().order_by('quadrant', 'position')
@@ -416,7 +437,7 @@ def appointment_detail(request, pk):
     # Add treatment status properties to each tooth
     for tooth in teeth:
         # Get all treatments for this tooth from this patient
-        tooth_treatments = Treatment.objects.filter(patient=appointment.patient, tooth=tooth)
+        tooth_treatments = Treatment.objects.filter(patient=patient, tooth=tooth)
         
         # Check if the tooth has any treatments
         tooth.has_treatments = tooth_treatments.exists()
@@ -447,10 +468,14 @@ def appointment_detail(request, pk):
     
     context = {
         'appointment': appointment,
-        'appointment_treatments': appointment_treatments,
-        'all_patient_treatments': all_patient_treatments,
+        'treatments': treatments,
+        'status_choices': status_choices,
+        'patient': patient,
+        'recent_payments': recent_payments,
+        'total_treatment_cost': total_treatment_cost,
+        'total_paid': total_paid,
+        'balance_due': balance_due,
         'teeth': teeth,
-        'status_choices': Appointment.STATUS_CHOICES,
     }
     return render(request, 'app/appointment_detail.html', context)
 
@@ -1050,3 +1075,117 @@ def dental_chart_view(request, patient_id, tooth=None):
         # ... other context data ...
     }
     return render(request, 'app/dental_chart.html', context)
+
+# Payment Views
+@login_required
+def payment_list(request, patient_id):
+    """View to list all payments for a patient"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    payments = Payment.objects.filter(patient=patient).order_by('-payment_date')
+    
+    # Calculate totals
+    total_treatment_cost = payments.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_paid = payments.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+    balance_due = total_treatment_cost - total_paid
+    
+    context = {
+        'patient': patient,
+        'payments': payments,
+        'total_treatment_cost': total_treatment_cost,
+        'total_paid': total_paid,
+        'balance_due': balance_due,
+    }
+    return render(request, 'app/payment_list.html', context)
+
+@login_required
+def payment_create(request, patient_id, appointment_id=None):
+    """View to create a new payment"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    appointment = None
+    if appointment_id:
+        appointment = get_object_or_404(Appointment, id=appointment_id, patient=patient)
+    
+    if request.method == 'POST':
+        form = PaymentForm(request.POST, patient=patient, appointment=appointment)
+        formset = PaymentItemFormSet(request.POST, instance=Payment())
+        
+        if form.is_valid() and formset.is_valid():
+            # Save the payment
+            payment = form.save(commit=False)
+            payment.patient = patient
+            payment.appointment = appointment
+            payment.created_by = request.user
+            payment.save()
+            
+            # Save the payment items
+            formset.instance = payment
+            formset.save()
+            
+            messages.success(request, 'Payment recorded successfully.')
+            
+            # Redirect based on where the payment was created from
+            if appointment:
+                return redirect('appointment_detail', pk=appointment.id)
+            else:
+                return redirect('patient_detail', pk=patient.id)
+    else:
+        form = PaymentForm(patient=patient, appointment=appointment)
+        formset = PaymentItemFormSet(instance=Payment())
+        
+        # Pre-populate with treatments if coming from an appointment
+        if appointment:
+            treatments = Treatment.objects.filter(appointment=appointment)
+            if treatments.exists():
+                # Create initial data for the formset
+                initial_data = []
+                for treatment in treatments:
+                    initial_data.append({
+                        'description': f"{treatment.condition.name} - {treatment.description}",
+                        'amount': treatment.cost,
+                        'treatment': treatment,
+                    })
+                formset = PaymentItemFormSet(instance=Payment(), initial=initial_data)
+    
+    # Get treatments for this patient for the dropdown
+    treatments = Treatment.objects.filter(patient=patient)
+    
+    context = {
+        'form': form,
+        'formset': formset,
+        'patient': patient,
+        'appointment': appointment,
+        'treatments': treatments,
+    }
+    return render(request, 'app/payment_form.html', context)
+
+@login_required
+def payment_detail(request, payment_id):
+    """View to show payment details"""
+    payment = get_object_or_404(Payment, id=payment_id)
+    payment_items = payment.items.all()
+    
+    context = {
+        'payment': payment,
+        'payment_items': payment_items,
+    }
+    return render(request, 'app/payment_detail.html', context)
+
+@login_required
+def get_patient_balance(request, patient_id):
+    """API endpoint to get a patient's balance"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Get payments for this patient
+    payments = Payment.objects.filter(patient=patient)
+    
+    # Calculate totals
+    total_treatment_cost = payments.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_paid = payments.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+    balance_due = total_treatment_cost - total_paid
+    
+    data = {
+        'total_treatment_cost': float(total_treatment_cost),
+        'total_paid': float(total_paid),
+        'balance_due': float(balance_due),
+    }
+    return JsonResponse(data)
