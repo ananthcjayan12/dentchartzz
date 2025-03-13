@@ -641,37 +641,41 @@ def appointment_status_update(request, pk):
 def dental_chart(request, patient_id):
     patient = get_object_or_404(Patient, id=patient_id)
     
+    # Get the appointment ID from query parameters if available
+    appointment_id = request.GET.get('appointment')
+    
+    # Try to get the specific appointment first, then fall back to latest if not specified
+    if appointment_id:
+        appointment = get_object_or_404(Appointment, id=appointment_id, patient=patient)
+    else:
+        # Get the latest appointment for this patient
+        appointment = Appointment.objects.filter(
+            patient=patient
+        ).order_by('-date', '-start_time').first()
+    
+    # If no appointment exists, redirect to patient detail
+    if not appointment:
+        messages.warning(request, 'No appointment found for this patient.')
+        return redirect('patient_detail', pk=patient_id)
+    
     # Get all teeth
     teeth = Tooth.objects.all().order_by('quadrant', 'position')
-    
-    # Get pre-selected appointment from query parameters
-    selected_appointment_id = request.GET.get('appointment')
     
     # Add treatment status properties to each tooth
     for tooth in teeth:
         # Filter treatments based on whether an appointment is selected
-        if selected_appointment_id:
-            tooth_treatments = Treatment.objects.filter(
-                patient=patient, 
-                tooth=tooth,
-                appointment_id=selected_appointment_id
-            )
-        else:
-            tooth_treatments = Treatment.objects.filter(patient=patient, tooth=tooth)
+        tooth_treatments = Treatment.objects.filter(
+            patient=patient, 
+            tooth=tooth,
+            appointment=appointment
+        )
         
-        # Check if the tooth has any treatments
+        # Add properties to tooth object
         tooth.has_treatments = tooth_treatments.exists()
-        
-        # Check if the tooth has planned treatments
         tooth.has_planned_treatments = tooth_treatments.filter(status='planned').exists()
-        
-        # Check if the tooth has in-progress treatments
         tooth.has_in_progress_treatments = tooth_treatments.filter(status='in_progress').exists()
-        
-        # Check if the tooth has completed treatments
         tooth.has_completed_treatments = tooth_treatments.filter(status='completed').exists()
         
-        # Count treatments by status
         tooth.treatment_counts = {
             'total': tooth_treatments.count(),
             'planned': tooth_treatments.filter(status='planned').count(),
@@ -691,7 +695,8 @@ def dental_chart(request, patient_id):
         'teeth': teeth,
         'conditions': conditions,
         'appointments': appointments,
-        'selected_appointment_id': selected_appointment_id,
+        'appointment': appointment,  # Add the current appointment to context
+        'selected_appointment_id': str(appointment.id) if appointment else None,
     }
     
     return render(request, 'app/dental_chart.html', context)
@@ -1013,3 +1018,16 @@ def get_time_slots(request):
         return JsonResponse({'error': 'Invalid date format'}, status=400)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+def dental_chart_view(request, patient_id, tooth=None):
+    patient = get_object_or_404(Patient, id=patient_id)
+    # Get the latest appointment for this patient
+    appointment = patient.appointment_set.latest('appointment_date')
+    
+    context = {
+        'patient': patient,
+        'tooth': tooth,
+        'appointment': appointment,  # Add appointment to context
+        # ... other context data ...
+    }
+    return render(request, 'app/dental_chart.html', context)

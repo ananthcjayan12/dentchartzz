@@ -11,9 +11,15 @@
                     <p class="mt-1 max-w-2xl text-sm text-gray-500">Patient: {{ patient.name }}</p>
                 </div>
                 <div>
-                    <a href="{% url 'patient_detail' patient.id %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Back to Patient
-                    </a>
+                    {% if appointment %}
+                        <a href="{% url 'appointment_detail' appointment.id %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Back to Appointment
+                        </a>
+                    {% else %}
+                        <a href="{% url 'patient_detail' patient.id %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Back to Patient
+                        </a>
+                    {% endif %}
                 </div>
             </div>
             
