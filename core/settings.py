@@ -27,7 +27,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-#75##%huc7(f^loyov77=
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*', 'dentchartz.srshti.co.in']
+
+# Add this new setting for CSRF protection with HTTPS
+CSRF_TRUSTED_ORIGINS = ['https://dentchartz.srshti.co.in']
 
 
 # Application definition
