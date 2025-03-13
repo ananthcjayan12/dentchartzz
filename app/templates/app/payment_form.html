@@ -7,8 +7,13 @@
 <div class="py-6">
     <div class="flex justify-between items-center mb-6">
         <div>
-            <h1 class="text-2xl font-semibold text-gray-900">Add Payment</h1>
-            <p class="mt-1 text-sm text-gray-500">Record a payment for {{ patient.name }}</p>
+            {% if is_balance_payment %}
+                <h1 class="text-2xl font-semibold text-gray-900">Pay Outstanding Balance</h1>
+                <p class="mt-1 text-sm text-gray-500">Record a payment towards {{ patient.name }}'s outstanding balance of ${{ balance_due|floatformat:2 }}</p>
+            {% else %}
+                <h1 class="text-2xl font-semibold text-gray-900">Add Payment</h1>
+                <p class="mt-1 text-sm text-gray-500">Record a payment for {{ patient.name }}</p>
+            {% endif %}
         </div>
         <div>
             {% if appointment %}
@@ -29,11 +34,19 @@
 
     <div class="bg-white shadow overflow-hidden rounded-lg">
         <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
-            <h3 class="text-lg font-medium leading-6 text-gray-900">Payment Details</h3>
+            {% if is_balance_payment %}
+                <h3 class="text-lg font-medium leading-6 text-gray-900">Balance Payment Details</h3>
+            {% else %}
+                <h3 class="text-lg font-medium leading-6 text-gray-900">Payment Details</h3>
+            {% endif %}
         </div>
         <div class="px-4 py-5 sm:p-6">
             <form method="post" id="payment-form">
                 {% csrf_token %}
+                
+                {% if is_balance_payment %}
+                    <input type="hidden" name="is_balance_payment" value="true">
+                {% endif %}
                 
                 <!-- Patient Information (Read-only) -->
                 <div class="mb-6 p-4 bg-gray-50 rounded-lg">

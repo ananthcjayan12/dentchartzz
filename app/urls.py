@@ -36,6 +36,7 @@ urlpatterns = [
     # Payment URLs
     path('patients/<int:patient_id>/payments/', views.payment_list, name='payment_list'),
     path('patients/<int:patient_id>/payments/create/', views.payment_create, name='payment_create'),
+    path('patients/<int:patient_id>/payments/balance/', views.payment_balance, name='payment_balance'),
     path('patients/<int:patient_id>/appointments/<int:appointment_id>/payments/create/', views.payment_create, name='payment_create_from_appointment'),
     path('payments/<int:payment_id>/', views.payment_detail, name='payment_detail'),
     path('api/patients/<int:patient_id>/balance/', views.get_patient_balance, name='get_patient_balance'),

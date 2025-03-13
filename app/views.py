@@ -1189,3 +1189,63 @@ def get_patient_balance(request, patient_id):
         'balance_due': float(balance_due),
     }
     return JsonResponse(data)
+
+@login_required
+def payment_balance(request, patient_id):
+    """View to create a payment for the outstanding balance"""
+    patient = get_object_or_404(Patient, id=patient_id)
+    
+    # Get payments for this patient
+    payments = Payment.objects.filter(patient=patient)
+    
+    # Calculate the outstanding balance
+    total_amount_billed = payments.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_paid = payments.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+    balance_due = total_amount_billed - total_paid
+    
+    if request.method == 'POST':
+        form = PaymentForm(request.POST, patient=patient)
+        formset = PaymentItemFormSet(request.POST, instance=Payment())
+        
+        if form.is_valid() and formset.is_valid():
+            # Save the payment
+            payment = form.save(commit=False)
+            payment.patient = patient
+            payment.created_by = request.user
+            
+            # For balance payments, we want to set total_amount to 0 
+            # and amount_paid to the actual payment amount
+            if 'is_balance_payment' in request.POST and request.POST['is_balance_payment'] == 'true':
+                payment.total_amount = 0
+            
+            payment.save()
+            
+            # Save the payment items
+            formset.instance = payment
+            formset.save()
+            
+            messages.success(request, 'Balance payment recorded successfully.')
+            return redirect('patient_detail', pk=patient.id)
+    else:
+        # Pre-fill the form with the outstanding balance
+        initial_data = {
+            'total_amount': 0,  # For balance payments, set total_amount to 0
+            'amount_paid': balance_due,  # The amount being paid towards the balance
+        }
+        form = PaymentForm(patient=patient, initial=initial_data)
+        
+        # Create a payment item for the balance payment
+        item_initial = [{
+            'description': 'Payment towards outstanding balance',
+            'amount': balance_due,
+        }]
+        formset = PaymentItemFormSet(instance=Payment(), initial=item_initial)
+    
+    context = {
+        'form': form,
+        'formset': formset,
+        'patient': patient,
+        'balance_due': balance_due,
+        'is_balance_payment': True,
+    }
+    return render(request, 'app/payment_form.html', context)

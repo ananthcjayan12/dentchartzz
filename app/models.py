@@ -187,6 +187,11 @@ class Payment(models.Model):
         """Calculate the remaining balance for this payment"""
         return self.total_amount - self.amount_paid
     
+    @property
+    def is_balance_payment(self):
+        """Check if this is a balance payment (amount_paid > total_amount)"""
+        return self.amount_paid > self.total_amount
+    
     class Meta:
         ordering = ['-payment_date', '-created_at']
 

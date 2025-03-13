@@ -43,7 +43,13 @@
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Total Amount</dt>
-                        <dd class="mt-1 text-sm text-gray-900">${{ payment.total_amount|floatformat:2 }}</dd>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {% if payment.is_balance_payment %}
+                                <span class="text-gray-500">Balance Payment</span>
+                            {% else %}
+                                ${{ payment.total_amount|floatformat:2 }}
+                            {% endif %}
+                        </dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Amount Paid</dt>
@@ -52,7 +58,11 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Balance</dt>
                         <dd class="mt-1 text-sm {% if payment.balance > 0 %}text-red-600{% else %}text-gray-900{% endif %}">
-                            ${{ payment.balance|floatformat:2 }}
+                            {% if payment.is_balance_payment %}
+                                <span class="text-green-600">Paid towards balance</span>
+                            {% else %}
+                                ${{ payment.balance|floatformat:2 }}
+                            {% endif %}
                         </dd>
                     </div>
                     <div>
@@ -139,7 +149,13 @@
                         <tfoot>
                             <tr class="bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">Total</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${{ payment.total_amount|floatformat:2 }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {% if payment.is_balance_payment %}
+                                        <span class="text-green-600">Paid towards balance</span>
+                                    {% else %}
+                                        ${{ payment.total_amount|floatformat:2 }}
+                                    {% endif %}
+                                </td>
                                 <td></td>
                             </tr>
                         </tfoot>
