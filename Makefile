@@ -61,7 +61,7 @@ collectstatic:
 
 # Production environment
 prod-build:
-	docker-compose -f docker-compose.prod.yml build
+	docker-compose -f docker-compose.prod.yml build --no-cache
 
 prod-up:
 	docker-compose -f docker-compose.prod.yml up -d
