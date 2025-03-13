@@ -740,7 +740,7 @@ def add_treatment(request, patient_id):
         for tooth_id in tooth_ids:
             try:
                 tooth = Tooth.objects.get(id=tooth_id)
-                Treatment.objects.create(
+                treatment = Treatment.objects.create(
                     patient=patient,
                     tooth=tooth,
                     condition=condition,
@@ -749,6 +749,17 @@ def add_treatment(request, patient_id):
                     status=status,
                     cost=cost
                 )
+                
+                # Create initial treatment history record
+                TreatmentHistory.objects.create(
+                    treatment=treatment,
+                    previous_status=None,
+                    new_status=status,
+                    appointment=appointment,
+                    dentist=request.user,
+                    notes=f"Treatment created with status {dict(Treatment.STATUS_CHOICES).get(status)} by {request.user.get_full_name() or request.user.username}"
+                )
+                
                 treatments_created += 1
             except Tooth.DoesNotExist:
                 continue
@@ -758,7 +769,11 @@ def add_treatment(request, patient_id):
         else:
             messages.error(request, 'No treatments were created')
         
-        return redirect('dental_chart', patient_id=patient.id)
+        # Redirect to appointment detail if appointment was specified
+        if appointment:
+            return redirect('appointment_detail', pk=appointment.id)
+        else:
+            return redirect('dental_chart', patient_id=patient.id)
     
     # If not POST, redirect back to dental chart
     return redirect('dental_chart', patient_id=patient.id)
@@ -858,8 +873,20 @@ def treatment_update(request, pk):
         treatment.description = description
         treatment.cost = cost
         
-        # Update the appointment if provided
-        if appointment_id:
+        # Get the current appointment ID from the request if it exists
+        current_appointment_id = request.POST.get('current_appointment')
+        current_appointment = None
+        
+        if current_appointment_id:
+            try:
+                current_appointment = Appointment.objects.get(pk=current_appointment_id)
+                # Update the treatment's appointment to the current one when status changes
+                if previous_status != status:
+                    treatment.appointment = current_appointment
+            except Appointment.DoesNotExist:
+                pass
+        # If no current appointment specified but appointment_id is provided, use that
+        elif appointment_id:
             try:
                 appointment = Appointment.objects.get(pk=appointment_id)
                 treatment.appointment = appointment
@@ -873,16 +900,8 @@ def treatment_update(request, pk):
             # Get the dentist's full name
             dentist_name = request.user.get_full_name() if request.user.get_full_name() else request.user.username
             
-            # Get the current appointment ID from the request if it exists
-            current_appointment_id = request.POST.get('current_appointment')
-            current_appointment = None
-            
-            if current_appointment_id:
-                try:
-                    current_appointment = Appointment.objects.get(pk=current_appointment_id)
-                except Appointment.DoesNotExist:
-                    current_appointment = treatment.appointment
-            else:
+            # Use the current appointment for the history record
+            if not current_appointment:
                 # Try to get the appointment ID from the referer URL
                 referer = request.POST.get('referer', '')
                 if 'appointment_detail' in referer:

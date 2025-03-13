@@ -700,8 +700,8 @@ class DentalChartViewsTest(TestCase):
         # Check that a new treatment was created
         self.assertEqual(Treatment.objects.count(), 2)
         
-        # Check that we're redirected to the dental chart
-        self.assertRedirects(response, reverse('dental_chart', kwargs={'patient_id': self.patient.id}))
+        # Check that we're redirected to the appointment detail page
+        self.assertRedirects(response, reverse('appointment_detail', kwargs={'pk': self.appointment.id}))
         
         # Get the new treatment
         new_treatment = Treatment.objects.latest('created_at')

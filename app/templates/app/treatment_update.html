@@ -57,6 +57,22 @@
                                 <textarea id="description" name="description" rows="3" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">{{ treatment.description }}</textarea>
                             </div>
                         </div>
+                        
+                        <div class="sm:col-span-3">
+                            <label for="current_appointment" class="block text-sm font-medium text-gray-700">Current Appointment</label>
+                            <div class="mt-1">
+                                <select id="current_appointment" name="current_appointment" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                    <option value="">Select current appointment</option>
+                                    {% for appointment in patient.appointment_set.all|dictsortreversed:"date" %}
+                                        <option value="{{ appointment.id }}" 
+                                            {% if request.GET.current_appointment == appointment.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ appointment.date|date:"M d, Y" }} at {{ appointment.start_time|time:"g:i A" }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Select the appointment where this treatment is being updated</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
