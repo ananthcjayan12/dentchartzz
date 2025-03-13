@@ -54,6 +54,18 @@ restart:
 
 status:
 	docker-compose ps
+	
+pytest:
+	docker-compose exec web pytest
+
+pytest-v:
+	docker-compose exec web pytest -v
+
+pytest-cov:
+	docker-compose exec web pytest --cov=.
+
+pytest-watch:
+	docker-compose exec web ptw
 
 # Collect static files
 collectstatic:
