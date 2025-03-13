@@ -152,12 +152,128 @@
     <div class="bg-white rounded-lg shadow">
         <div class="px-4 py-5 border-b border-gray-200 sm:px-6 flex justify-between items-center">
             <h3 class="text-lg font-medium leading-6 text-gray-900">Treatments</h3>
-            <a href="#" 
+            <a href="{% url 'dental_chart' patient.pk %}" 
                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 <i class="bi bi-plus mr-2"></i>
                 New Treatment
             </a>
         </div>
+        
+        <!-- Treatment Plan Visualization -->
+        <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+            <h4 class="text-md font-medium text-gray-700 mb-4">Treatment Plan Visualization</h4>
+            
+            <!-- Dental Chart Mini-View -->
+            <div class="dental-chart-container mb-6">
+                <!-- Upper Teeth -->
+                <div class="flex justify-center mb-4">
+                    <div class="dental-chart-upper grid grid-cols-2 gap-4">
+                        <!-- Upper Right Quadrant (1) -->
+                        <div class="quadrant-1 grid grid-cols-8 gap-1">
+                            {% for tooth in teeth %}
+                                {% if tooth.quadrant == 1 %}
+                                <div class="tooth-container">
+                                    <div class="tooth-number text-xs text-center mb-1">{{ tooth.number }}</div>
+                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %}" id="tooth-{{ tooth.number }}">
+                                        <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                                            <polygon points="20,0 40,15 30,60 10,60 0,15" class="tooth-shape" />
+                                            {% if tooth.treatment_counts.total > 0 %}
+                                            <text x="20" y="35" text-anchor="middle" class="tooth-count">{{ tooth.treatment_counts.total }}</text>
+                                            {% endif %}
+                                        </svg>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Upper Left Quadrant (2) -->
+                        <div class="quadrant-2 grid grid-cols-8 gap-1">
+                            {% for tooth in teeth %}
+                                {% if tooth.quadrant == 2 %}
+                                <div class="tooth-container">
+                                    <div class="tooth-number text-xs text-center mb-1">{{ tooth.number }}</div>
+                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %}" id="tooth-{{ tooth.number }}">
+                                        <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                                            <polygon points="20,0 40,15 30,60 10,60 0,15" class="tooth-shape" />
+                                            {% if tooth.treatment_counts.total > 0 %}
+                                            <text x="20" y="35" text-anchor="middle" class="tooth-count">{{ tooth.treatment_counts.total }}</text>
+                                            {% endif %}
+                                        </svg>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lower Teeth -->
+                <div class="flex justify-center">
+                    <div class="dental-chart-lower grid grid-cols-2 gap-4">
+                        <!-- Lower Right Quadrant (4) -->
+                        <div class="quadrant-4 grid grid-cols-8 gap-1">
+                            {% for tooth in teeth %}
+                                {% if tooth.quadrant == 4 %}
+                                <div class="tooth-container">
+                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %}" id="tooth-{{ tooth.number }}">
+                                        <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                                            <polygon points="20,60 40,45 30,0 10,0 0,45" class="tooth-shape" />
+                                            {% if tooth.treatment_counts.total > 0 %}
+                                            <text x="20" y="35" text-anchor="middle" class="tooth-count">{{ tooth.treatment_counts.total }}</text>
+                                            {% endif %}
+                                        </svg>
+                                    </div>
+                                    <div class="tooth-number text-xs text-center mt-1">{{ tooth.number }}</div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Lower Left Quadrant (3) -->
+                        <div class="quadrant-3 grid grid-cols-8 gap-1">
+                            {% for tooth in teeth %}
+                                {% if tooth.quadrant == 3 %}
+                                <div class="tooth-container">
+                                    <div class="tooth {% if tooth.has_treatments %}has-treatment{% endif %} {% if tooth.has_planned_treatments %}planned{% endif %} {% if tooth.has_in_progress_treatments %}in-progress{% endif %} {% if tooth.has_completed_treatments %}completed{% endif %}" id="tooth-{{ tooth.number }}">
+                                        <svg viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
+                                            <polygon points="20,60 40,45 30,0 10,0 0,45" class="tooth-shape" />
+                                            {% if tooth.treatment_counts.total > 0 %}
+                                            <text x="20" y="35" text-anchor="middle" class="tooth-count">{{ tooth.treatment_counts.total }}</text>
+                                            {% endif %}
+                                        </svg>
+                                    </div>
+                                    <div class="tooth-number text-xs text-center mt-1">{{ tooth.number }}</div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Legend -->
+            <div class="flex justify-center space-x-6 mb-2">
+                <div class="flex items-center">
+                    <div class="w-4 h-4 mr-2 rounded-sm" style="background-color: #e5e7eb;"></div>
+                    <span class="text-xs text-gray-600">Has Treatment</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 mr-2 rounded-sm" style="background-color: #fef3c7;"></div>
+                    <span class="text-xs text-gray-600">Planned</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 mr-2 rounded-sm" style="background-color: #dbeafe;"></div>
+                    <span class="text-xs text-gray-600">In Progress</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 mr-2 rounded-sm" style="background-color: #d1fae5;"></div>
+                    <span class="text-xs text-gray-600">Completed</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Treatment List -->
         <div class="px-4 py-5 sm:p-6">
             {% if treatments %}
             <div class="overflow-x-auto">
@@ -167,6 +283,7 @@
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tooth</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Condition</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -180,6 +297,7 @@
                                 {% if treatment.tooth %}{{ treatment.tooth.number }} - {{ treatment.tooth.name }}{% else %}-{% endif %}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ treatment.condition.name }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-900">{{ treatment.description }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                     {% if treatment.status == 'planned' %}bg-yellow-100 text-yellow-800
@@ -191,7 +309,10 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${{ treatment.cost }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <a href="#" class="text-indigo-600 hover:text-indigo-900">View</a>
+                                <a href="{% url 'treatment_detail' treatment.id %}" class="text-indigo-600 hover:text-indigo-900 mr-2">View</a>
+                                {% if treatment.status != 'completed' and treatment.status != 'cancelled' %}
+                                <a href="{% url 'treatment_update' treatment.id %}" class="text-indigo-600 hover:text-indigo-900">Update</a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -204,4 +325,257 @@
         </div>
     </div>
 </div>
+
+<!-- Tooth Treatment History Modal -->
+<div id="treatment-history-modal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+        <div class="px-4 py-5 border-b border-gray-200 sm:px-6 flex justify-between items-center">
+            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Treatment History</h3>
+            <button type="button" id="close-modal" class="text-gray-400 hover:text-gray-500">
+                <span class="sr-only">Close</span>
+                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="px-4 py-5 sm:p-6 overflow-y-auto max-h-[calc(80vh-120px)]" id="modal-content">
+            <!-- Content will be loaded dynamically -->
+            <div class="animate-pulse">
+                <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                <div class="h-4 bg-gray-200 rounded w-5/6 mb-4"></div>
+                <div class="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
+            </div>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+            <button type="button" id="close-modal-btn" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .dental-chart-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .tooth-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .tooth {
+        width: 30px;
+        height: 45px;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .tooth:hover {
+        transform: scale(1.1);
+    }
+    .tooth-shape {
+        fill: white;
+        stroke: #4f46e5;
+        stroke-width: 2;
+    }
+    .has-treatment .tooth-shape {
+        fill: #e5e7eb;
+    }
+    .planned .tooth-shape {
+        fill: #fef3c7;
+    }
+    .in-progress .tooth-shape {
+        fill: #dbeafe;
+    }
+    .completed .tooth-shape {
+        fill: #d1fae5;
+    }
+    .tooth-count {
+        font-size: 12px;
+        font-weight: bold;
+        fill: #4b5563;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tooth hover and click functionality
+        const teeth = document.querySelectorAll('.tooth');
+        const modal = document.getElementById('treatment-history-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+        const closeModalBtn = document.getElementById('close-modal');
+        const closeModalFooterBtn = document.getElementById('close-modal-btn');
+        
+        teeth.forEach(tooth => {
+            tooth.addEventListener('click', function() {
+                const toothId = this.id.replace('tooth-', '');
+                // Store patient ID in a JavaScript variable to avoid template syntax issues
+                const patientId = "{{ patient.id }}";
+                
+                // Show modal
+                modal.classList.remove('hidden');
+                modalTitle.textContent = `Treatment History for Tooth ${toothId}`;
+                
+                // Fetch treatment history for this tooth
+                fetchToothTreatmentHistory(toothId, patientId);
+            });
+        });
+        
+        // Close modal functionality
+        closeModalBtn.addEventListener('click', function() {
+            modal.classList.add('hidden');
+        });
+        
+        closeModalFooterBtn.addEventListener('click', function() {
+            modal.classList.add('hidden');
+        });
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+        
+        // Function to fetch treatment history
+        function fetchToothTreatmentHistory(toothId, patientId) {
+            // Show loading state
+            modalContent.innerHTML = `
+                <div class="animate-pulse">
+                    <div class="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                    <div class="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                    <div class="h-4 bg-gray-200 rounded w-5/6 mb-4"></div>
+                    <div class="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
+                </div>
+            `;
+            
+            // Fetch data from the server
+            fetch(`/app/treatments/tooth/${toothId}/?patient_id=${patientId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.treatments && data.treatments.length > 0) {
+                        // Group treatments by appointment
+                        const treatmentsByAppointment = {};
+                        
+                        data.treatments.forEach(treatment => {
+                            const appointmentKey = treatment.appointment_id ? 
+                                `appointment-${treatment.appointment_id}` : 'no-appointment';
+                            
+                            if (!treatmentsByAppointment[appointmentKey]) {
+                                treatmentsByAppointment[appointmentKey] = {
+                                    appointment_date: treatment.appointment_date,
+                                    appointment_id: treatment.appointment_id,
+                                    treatments: []
+                                };
+                            }
+                            
+                            treatmentsByAppointment[appointmentKey].treatments.push(treatment);
+                        });
+                        
+                        // Build HTML for the modal content
+                        let html = `
+                            <div class="mb-4">
+                                <h4 class="text-md font-medium text-gray-700">Tooth ${toothId} - ${data.tooth_name || 'Unknown'}</h4>
+                            </div>
+                        `;
+                        
+                        // Sort appointments by date (most recent first)
+                        const sortedAppointments = Object.values(treatmentsByAppointment).sort((a, b) => {
+                            if (!a.appointment_date) return 1;
+                            if (!b.appointment_date) return -1;
+                            return new Date(b.appointment_date) - new Date(a.appointment_date);
+                        });
+                        
+                        sortedAppointments.forEach(appointmentGroup => {
+                            html += `
+                                <div class="mb-6 border-b border-gray-200 pb-4">
+                                    <h5 class="text-sm font-medium text-gray-700 mb-2">
+                                        ${appointmentGroup.appointment_date ? 
+                                            `Appointment: ${appointmentGroup.appointment_date}` : 
+                                            'No Appointment'}
+                                    </h5>
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full divide-y divide-gray-200">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Condition</th>
+                                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="bg-white divide-y divide-gray-200">
+                            `;
+                            
+                            appointmentGroup.treatments.forEach(treatment => {
+                                let statusClass = '';
+                                if (treatment.status === 'planned') statusClass = 'bg-yellow-100 text-yellow-800';
+                                else if (treatment.status === 'in_progress') statusClass = 'bg-blue-100 text-blue-800';
+                                else if (treatment.status === 'completed') statusClass = 'bg-green-100 text-green-800';
+                                else statusClass = 'bg-red-100 text-red-800';
+                                
+                                html += `
+                                    <tr>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${treatment.condition_name}</td>
+                                        <td class="px-4 py-2 text-sm text-gray-900">${treatment.description}</td>
+                                        <td class="px-4 py-2 whitespace-nowrap">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+                                                ${treatment.status_display}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">${treatment.created_at}</td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            html += `
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        // Add action buttons
+                        html += `
+                            <div class="mt-4">
+                                <a href="{% url 'dental_chart' patient.id %}?tooth=${toothId}" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="bi bi-plus-lg mr-2"></i>
+                                    Add New Treatment
+                                </a>
+                            </div>
+                        `;
+                        
+                        modalContent.innerHTML = html;
+                    } else {
+                        modalContent.innerHTML = `
+                            <div class="text-center py-6">
+                                <p class="text-gray-500 mb-4">No treatment history found for this tooth.</p>
+                                <a href="{% url 'dental_chart' patient.id %}?tooth=${toothId}" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <i class="bi bi-plus-lg mr-2"></i>
+                                    Add Treatment
+                                </a>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching tooth treatment history:', error);
+                    modalContent.innerHTML = `
+                        <div class="text-center py-6">
+                            <p class="text-red-500 mb-4">Error loading treatment history. Please try again.</p>
+                            <p class="text-sm text-gray-500">Details: ${error.message}</p>
+                        </div>
+                    `;
+                });
+        }
+    });
+</script>
 {% endblock %} 

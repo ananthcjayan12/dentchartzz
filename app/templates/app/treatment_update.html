@@ -1,0 +1,91 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Update Treatment{% endblock %}
+
+{% block content %}
+<div class="py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <!-- Header -->
+            <div class="px-4 py-5 border-b border-gray-200 sm:px-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Update Treatment</h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                    {% if treatment.tooth %}Tooth {{ treatment.tooth.number }} - {{ treatment.tooth.name }}{% else %}General Treatment{% endif %}
+                </p>
+            </div>
+            
+            <!-- Form -->
+            <form method="post" action="{% url 'treatment_update' treatment.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="referer" value="{{ referer }}">
+                
+                <!-- Add hidden field for current appointment if it exists in the URL -->
+                {% if request.GET.current_appointment %}
+                <input type="hidden" name="current_appointment" value="{{ request.GET.current_appointment }}">
+                {% endif %}
+                
+                <div class="px-4 py-5 sm:p-6">
+                    <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                        <div class="sm:col-span-3">
+                            <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                            <div class="mt-1">
+                                <select id="status" name="status" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                    <option value="planned" {% if treatment.status == 'planned' %}selected{% endif %}>Planned</option>
+                                    <option value="in_progress" {% if treatment.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                    <option value="completed" {% if treatment.status == 'completed' %}selected{% endif %}>Completed</option>
+                                    <option value="cancelled" {% if treatment.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="sm:col-span-3">
+                            <label for="cost" class="block text-sm font-medium text-gray-700">Cost ($)</label>
+                            <div class="mt-1">
+                                <input type="number" 
+                                       name="cost" 
+                                       id="cost" 
+                                       step="0.01" 
+                                       min="0" 
+                                       value="{{ treatment.cost }}"
+                                       class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                            </div>
+                        </div>
+                        
+                        <div class="sm:col-span-6">
+                            <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                            <div class="mt-1">
+                                <textarea id="description" name="description" rows="3" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">{{ treatment.description }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="sm:col-span-3">
+                            <label for="current_appointment" class="block text-sm font-medium text-gray-700">Current Appointment</label>
+                            <div class="mt-1">
+                                <select id="current_appointment" name="current_appointment" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                                    <option value="">Select current appointment</option>
+                                    {% for appointment in patient.appointment_set.all|dictsortreversed:"date" %}
+                                        <option value="{{ appointment.id }}" 
+                                            {% if request.GET.current_appointment == appointment.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ appointment.date|date:"M d, Y" }} at {{ appointment.start_time|time:"g:i A" }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Select the appointment where this treatment is being updated</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+                    <a href="{{ referer }}" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-3">
+                        Cancel
+                    </a>
+                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

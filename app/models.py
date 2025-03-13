@@ -29,13 +29,13 @@ class Patient(models.Model):
     name = models.CharField(max_length=100)
     age = models.IntegerField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
-    date_of_birth = models.DateField()
+    date_of_birth = models.DateField(blank=True, null=True)
     phone = models.CharField(max_length=15)
     email = models.EmailField(blank=True, null=True)
     address = models.TextField()
     
     # Medical Information
-    chief_complaint = models.TextField()
+    chief_complaint = models.TextField(blank=True, null=True)
     medical_history = models.TextField(blank=True, null=True)
     drug_allergies = models.TextField(blank=True, null=True)
     previous_dental_work = models.TextField(blank=True, null=True)
@@ -95,9 +95,12 @@ class Appointment(models.Model):
         ordering = ['-date', '-start_time']
 
 class Tooth(models.Model):
-    # Using Zsigmondy-Palmer notation (1-32 for permanent teeth)
+    # Using double-digit tooth numbering system
+    # First digit is the quadrant (1-4), second digit is the tooth position (1-8)
     number = models.IntegerField()
     name = models.CharField(max_length=50)
+    quadrant = models.IntegerField(choices=[(1, 'Upper Right'), (2, 'Upper Left'), (3, 'Lower Left'), (4, 'Lower Right')], null=True, blank=True)
+    position = models.IntegerField(help_text="Position within the quadrant (1-8)", null=True, blank=True)
     
     def __str__(self):
         return f"Tooth {self.number} - {self.name}"
@@ -135,3 +138,21 @@ class Treatment(models.Model):
     def __str__(self):
         tooth_info = f" - Tooth {self.tooth.number}" if self.tooth else ""
         return f"{self.patient.name}{tooth_info} - {self.condition.name}"
+
+class TreatmentHistory(models.Model):
+    """Model to track treatment status changes over time"""
+    treatment = models.ForeignKey(Treatment, on_delete=models.CASCADE, related_name='history')
+    previous_status = models.CharField(max_length=20, choices=Treatment.STATUS_CHOICES, null=True, blank=True)
+    new_status = models.CharField(max_length=20, choices=Treatment.STATUS_CHOICES)
+    appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='treatment_history')
+    dentist = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='treatment_history')
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        previous = self.get_previous_status_display() if self.previous_status else "None"
+        return f"{self.treatment} - Status changed from {previous} to {self.get_new_status_display()}"
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name_plural = "Treatment histories"

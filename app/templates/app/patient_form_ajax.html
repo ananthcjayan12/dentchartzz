@@ -1,0 +1,157 @@
+<form id="new-patient-form" class="space-y-6">
+    {% csrf_token %}
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    
+    {% if form.non_field_errors %}
+    <div class="rounded-md bg-red-50 p-4 mb-6">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="bi bi-exclamation-circle text-red-400"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800">There were errors with your submission</h3>
+                <div class="mt-2 text-sm text-red-700">
+                    <ul class="list-disc pl-5 space-y-1">
+                        {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+        <!-- Name -->
+        <div class="sm:col-span-3">
+            <label for="{{ form.name.id_for_label }}" class="block text-sm font-medium text-gray-700">Full Name</label>
+            <div class="mt-1">
+                <input type="text" name="{{ form.name.name }}" id="{{ form.name.id_for_label }}" value="{{ form.name.value|default:'' }}"
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                       {% if form.name.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}"
+                       placeholder="Enter patient's full name">
+                {% if form.name.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.name.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Age -->
+        <div class="sm:col-span-3">
+            <label for="{{ form.age.id_for_label }}" class="block text-sm font-medium text-gray-700">Age</label>
+            <div class="mt-1">
+                <input type="number" name="{{ form.age.name }}" id="{{ form.age.id_for_label }}" value="{{ form.age.value|default:'' }}"
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                       {% if form.age.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}"
+                       placeholder="Enter age">
+                {% if form.age.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.age.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Gender -->
+        <div class="sm:col-span-3">
+            <label for="{{ form.gender.id_for_label }}" class="block text-sm font-medium text-gray-700">Gender</label>
+            <div class="mt-1">
+                <select name="{{ form.gender.name }}" id="{{ form.gender.id_for_label }}"
+                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                        {% if form.gender.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">
+                    <option value="">Select gender</option>
+                    <option value="M" {% if form.gender.value == 'M' %}selected{% endif %}>Male</option>
+                    <option value="F" {% if form.gender.value == 'F' %}selected{% endif %}>Female</option>
+                    <option value="O" {% if form.gender.value == 'O' %}selected{% endif %}>Other</option>
+                </select>
+                {% if form.gender.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.gender.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Date of Birth (Required) -->
+        <div class="sm:col-span-3">
+            <label for="{{ form.date_of_birth.id_for_label }}" class="block text-sm font-medium text-gray-700">Date of Birth</label>
+            <div class="mt-1">
+                <input type="date" name="{{ form.date_of_birth.name }}" id="{{ form.date_of_birth.id_for_label }}" value="{{ form.date_of_birth.value|date:'Y-m-d'|default:'' }}"
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                       {% if form.date_of_birth.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}">
+                {% if form.date_of_birth.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.date_of_birth.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Phone -->
+        <div class="sm:col-span-3">
+            <label for="{{ form.phone.id_for_label }}" class="block text-sm font-medium text-gray-700">Phone</label>
+            <div class="mt-1">
+                <input type="tel" name="{{ form.phone.name }}" id="{{ form.phone.id_for_label }}" value="{{ form.phone.value|default:'' }}"
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                       {% if form.phone.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}"
+                       placeholder="Enter phone number">
+                {% if form.phone.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.phone.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Email -->
+        <div class="sm:col-span-3">
+            <label for="{{ form.email.id_for_label }}" class="block text-sm font-medium text-gray-700">Email</label>
+            <div class="mt-1">
+                <input type="email" name="{{ form.email.name }}" id="{{ form.email.id_for_label }}" value="{{ form.email.value|default:'' }}"
+                       class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                       {% if form.email.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}"
+                       placeholder="Enter email address (optional)">
+                {% if form.email.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.email.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Address -->
+        <div class="sm:col-span-6">
+            <label for="{{ form.address.id_for_label }}" class="block text-sm font-medium text-gray-700">Address</label>
+            <div class="mt-1">
+                <textarea name="{{ form.address.name }}" id="{{ form.address.id_for_label }}" rows="3"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                          {% if form.address.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}"
+                          placeholder="Enter address (optional)">{{ form.address.value|default:'' }}</textarea>
+                {% if form.address.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.address.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Medical History -->
+        <div class="sm:col-span-6">
+            <label for="{{ form.medical_history.id_for_label }}" class="block text-sm font-medium text-gray-700">Medical History</label>
+            <div class="mt-1">
+                <textarea name="{{ form.medical_history.name }}" id="{{ form.medical_history.id_for_label }}" rows="3"
+                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm
+                          {% if form.medical_history.errors %}border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500{% endif %}"
+                          placeholder="Enter any relevant medical history (optional)">{{ form.medical_history.value|default:'' }}</textarea>
+                {% if form.medical_history.errors %}
+                <p class="mt-2 text-sm text-red-600">{{ form.medical_history.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="flex justify-end space-x-3">
+        <button type="button" id="cancel-patient-form" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Cancel
+        </button>
+        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Create Patient
+        </button>
+    </div>
+</form>
+
+<script>
+    document.getElementById('cancel-patient-form').addEventListener('click', function() {
+        // Find the close button in the modal and trigger a click
+        document.getElementById('closePatientModal').click();
+    });
+</script> 

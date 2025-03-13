@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgres://dentchartzz:dentchartzz_password@db:5432/dentchartzz_db
+      - DEBUG=True
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-#75##%huc7(f^loyov77=pga%^1b^*bjnl-9e19r&c9z(jm18(}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./:/app  # Mount the entire project for development
+      - static_volume:/app/static
+      - media_volume:/app/media
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             python init_db.py &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  db:
+    image: postgres:14
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=dentchartzz
+      - POSTGRES_PASSWORD=dentchartzz_password
+      - POSTGRES_DB=dentchartzz_db
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dentchartzz -d dentchartzz_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume: 

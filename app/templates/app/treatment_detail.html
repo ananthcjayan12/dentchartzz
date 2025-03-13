@@ -1,0 +1,231 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Treatment Details{% endblock %}
+
+{% block content %}
+<div class="py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <!-- Header -->
+            <div class="px-4 py-5 border-b border-gray-200 sm:px-6 flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Treatment Details</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                        {% if treatment.tooth %}Tooth {{ treatment.tooth.number }} - {{ treatment.tooth.name }}{% else %}General Treatment{% endif %}
+                    </p>
+                </div>
+                <div class="flex space-x-3">
+                    <a href="{% url 'treatment_update' treatment.pk %}" 
+                       class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <i class="bi bi-pencil mr-2"></i>
+                        Update Status
+                    </a>
+                    <a href="{% url 'patient_detail' treatment.patient.id %}" 
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <i class="bi bi-arrow-left mr-2"></i>
+                        Back to Patient
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Treatment Information -->
+            <div class="px-4 py-5 sm:p-6">
+                <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Patient</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            <a href="{% url 'patient_detail' treatment.patient.id %}" class="text-indigo-600 hover:text-indigo-900">
+                                {{ treatment.patient.name }}
+                            </a>
+                        </dd>
+                    </div>
+                    
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Tooth</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {% if treatment.tooth %}{{ treatment.tooth.number }} - {{ treatment.tooth.name }}{% else %}-{% endif %}
+                        </dd>
+                    </div>
+                    
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Condition</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ treatment.condition.name }}</dd>
+                    </div>
+                    
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Status</dt>
+                        <dd class="mt-1">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {% if treatment.status == 'planned' %}bg-yellow-100 text-yellow-800
+                                {% elif treatment.status == 'in_progress' %}bg-blue-100 text-blue-800
+                                {% elif treatment.status == 'completed' %}bg-green-100 text-green-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ treatment.get_status_display }}
+                            </span>
+                        </dd>
+                    </div>
+                    
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Cost</dt>
+                        <dd class="mt-1 text-sm text-gray-900">${{ treatment.cost }}</dd>
+                    </div>
+                    
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Created</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ treatment.created_at|date:"F d, Y" }}</dd>
+                    </div>
+                    
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Last Updated</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ treatment.updated_at|date:"F d, Y" }}</dd>
+                    </div>
+                    
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Appointment</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {% if treatment.appointment %}
+                            <a href="{% url 'appointment_detail' treatment.appointment.id %}" class="text-indigo-600 hover:text-indigo-900">
+                                {{ treatment.appointment.date|date:"F d, Y" }} at {{ treatment.appointment.start_time }}
+                            </a>
+                            {% else %}
+                            No appointment associated
+                            {% endif %}
+                        </dd>
+                    </div>
+                    
+                    <div class="sm:col-span-2">
+                        <dt class="text-sm font-medium text-gray-500">Description</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ treatment.description }}</dd>
+                    </div>
+                </dl>
+            </div>
+            
+            <!-- Actions -->
+            <div class="px-4 py-5 border-t border-gray-200 sm:px-6">
+                <h4 class="text-md font-medium text-gray-700 mb-4">Actions</h4>
+                <div class="space-y-4">
+                    {% if treatment.status == 'planned' %}
+                    <form action="{% url 'treatment_update' treatment.pk %}" method="post" class="inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="in_progress">
+                        <input type="hidden" name="description" value="{{ treatment.description }}">
+                        <input type="hidden" name="cost" value="{{ treatment.cost }}">
+                        <input type="hidden" name="referer" value="{{ request.path }}">
+                        <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <i class="bi bi-play-fill mr-2"></i>
+                            Start Treatment
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    {% if treatment.status == 'in_progress' %}
+                    <form action="{% url 'treatment_update' treatment.pk %}" method="post" class="inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="completed">
+                        <input type="hidden" name="description" value="{{ treatment.description }}">
+                        <input type="hidden" name="cost" value="{{ treatment.cost }}">
+                        <input type="hidden" name="referer" value="{{ request.path }}">
+                        <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            <i class="bi bi-check-lg mr-2"></i>
+                            Complete Treatment
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    {% if treatment.status != 'cancelled' and treatment.status != 'completed' %}
+                    <form action="{% url 'treatment_update' treatment.pk %}" method="post" class="inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="status" value="cancelled">
+                        <input type="hidden" name="description" value="{{ treatment.description }}">
+                        <input type="hidden" name="cost" value="{{ treatment.cost }}">
+                        <input type="hidden" name="referer" value="{{ request.path }}">
+                        <button type="submit" class="w-full inline-flex justify-center items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            <i class="bi bi-x-circle mr-2"></i>
+                            Cancel Treatment
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Treatment History -->
+            <div class="px-4 py-5 border-t border-gray-200 sm:px-6">
+                <h4 class="text-md font-medium text-gray-700 mb-4">Treatment History</h4>
+                
+                {% if treatment_history %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status Change</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Appointment</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dentist</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for history in treatment_history %}
+                            <tr>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ history.created_at|date:"M d, Y H:i" }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        {% if history.previous_status %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                            {% if history.previous_status == 'planned' %}bg-yellow-100 text-yellow-800
+                                            {% elif history.previous_status == 'in_progress' %}bg-blue-100 text-blue-800
+                                            {% elif history.previous_status == 'completed' %}bg-green-100 text-green-800
+                                            {% else %}bg-red-100 text-red-800{% endif %}">
+                                            {{ history.get_previous_status_display }}
+                                        </span>
+                                        {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            Initial
+                                        </span>
+                                        {% endif %}
+                                        
+                                        <i class="bi bi-arrow-right mx-2 text-gray-400"></i>
+                                        
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                            {% if history.new_status == 'planned' %}bg-yellow-100 text-yellow-800
+                                            {% elif history.new_status == 'in_progress' %}bg-blue-100 text-blue-800
+                                            {% elif history.new_status == 'completed' %}bg-green-100 text-green-800
+                                            {% else %}bg-red-100 text-red-800{% endif %}">
+                                            {{ history.get_new_status_display }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                    {% if history.appointment %}
+                                    <a href="{% url 'appointment_detail' history.appointment.id %}" class="text-indigo-600 hover:text-indigo-900">
+                                        {{ history.appointment.date|date:"M d, Y" }}
+                                    </a>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                    {% if history.dentist %}
+                                        {% if history.dentist.first_name or history.dentist.last_name %}
+                                            {{ history.dentist.get_full_name }}
+                                        {% else %}
+                                            {{ history.dentist.username }}
+                                        {% endif %}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-900">{{ history.notes|default:"-" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-500 italic">No history recorded for this treatment.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
