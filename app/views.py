@@ -421,13 +421,18 @@ def appointment_create(request):
 @login_required
 def appointment_detail(request, pk):
     appointment = get_object_or_404(Appointment, pk=pk)
-    treatments = Treatment.objects.filter(appointment=appointment)
+    
+    # Get treatments for this appointment
+    appointment_treatments = Treatment.objects.filter(appointment=appointment)
+    
+    # Get all treatments for this patient
+    patient = appointment.patient
+    all_patient_treatments = Treatment.objects.filter(patient=patient).order_by('-created_at')
     
     # Get status choices for the form
     status_choices = Appointment.STATUS_CHOICES
     
     # Get payment information
-    patient = appointment.patient
     payments = Payment.objects.filter(patient=patient).order_by('-payment_date')
     recent_payments = payments[:5]  # Get the 5 most recent payments
     
@@ -473,7 +478,8 @@ def appointment_detail(request, pk):
     
     context = {
         'appointment': appointment,
-        'treatments': treatments,
+        'appointment_treatments': appointment_treatments,
+        'all_patient_treatments': all_patient_treatments,
         'status_choices': status_choices,
         'patient': patient,
         'recent_payments': recent_payments,

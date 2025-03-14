@@ -46,9 +46,14 @@ class PatientFormTest(TestCase):
         self.assertFalse(form.is_valid())
         
         # Check that required fields are in the errors
-        required_fields = ['name', 'age', 'gender', 'phone', 'address']
+        required_fields = ['name', 'age', 'gender', 'phone']
         for field in required_fields:
             self.assertIn(field, form.errors)
+            
+        # Check that optional fields are not in the errors
+        optional_fields = ['address', 'email', 'date_of_birth', 'chief_complaint', 'medical_history', 'drug_allergies', 'previous_dental_work']
+        for field in optional_fields:
+            self.assertNotIn(field, form.errors)
 
 
 class AppointmentFormTest(TestCase):
