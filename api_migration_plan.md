@@ -62,11 +62,11 @@ dentchartzz-frontend/
 
 ### Phase 1: Backend API Development
 
-- [ ] **1.1. Project Setup**
-  - [ ] Create new Django project for the API
-  - [ ] Install required packages (Django REST Framework, CORS headers)
-  - [ ] Configure settings.py with DRF and CORS settings
-  - [ ] Set up project structure
+- [x] **1.1. Project Setup**
+  - [x] Create new Django project for the API
+  - [x] Install required packages (Django REST Framework, CORS headers)
+  - [x] Configure settings.py with DRF and CORS settings
+  - [x] Set up project structure
 
 - [ ] **1.2. Models and Database**
   - [ ] Create models matching the existing application

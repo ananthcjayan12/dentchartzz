@@ -27,6 +27,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', redirect_to_dashboard, name='home'),
     path('app/', include('app.urls')),
+    path('api/v1/', include('api.urls')),  # API endpoints
 ]
 
 # Serve static files in development
