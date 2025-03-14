@@ -36,7 +36,21 @@ class RegisterView(CreateAPIView):
     
     @swagger_auto_schema(**REGISTER_DOCS)
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        
+        # Generate tokens
+        refresh = RefreshToken.for_user(user)
+        
+        # Get user data
+        user_serializer = UserSerializer(user)
+        
+        return Response({
+            'user': user_serializer.data,
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }, status=status.HTTP_201_CREATED)
 
 class LogoutView(APIView):
     """
@@ -50,7 +64,7 @@ class LogoutView(APIView):
             refresh_token = request.data.get('refresh')
             token = RefreshToken(refresh_token)
             token.blacklist()
-            return Response({'detail': 'Logout successful'}, status=status.HTTP_200_OK)
+            return Response({'detail': 'Logout successful'}, status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return Response({'detail': 'Token is invalid or expired'}, status=status.HTTP_400_BAD_REQUEST)
 
