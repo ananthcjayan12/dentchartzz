@@ -11,6 +11,11 @@ from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
 from django.template.loader import render_to_string
 import re
+from decimal import Decimal
+from django.core.paginator import Paginator
+from django.utils import timezone
+from django.forms import inlineformset_factory
+import json
 
 # Create your views here.
 def login_view(request):
@@ -1081,19 +1086,41 @@ def dental_chart_view(request, patient_id, tooth=None):
 def payment_list(request, patient_id):
     """View to list all payments for a patient"""
     patient = get_object_or_404(Patient, id=patient_id)
-    payments = Payment.objects.filter(patient=patient).order_by('-payment_date')
     
-    # Calculate totals
-    total_treatment_cost = payments.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    total_paid = payments.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
+    # Get search parameters
+    search_query = request.GET.get('search', '')
+    
+    # Filter payments based on search query
+    payments = Payment.objects.filter(patient=patient)
+    
+    if search_query:
+        payments = payments.filter(
+            Q(payment_method__icontains=search_query) |
+            Q(notes__icontains=search_query) |
+            Q(items__description__icontains=search_query)
+        ).distinct()
+    
+    # Order by payment date (newest first)
+    payments = payments.order_by('-payment_date', '-created_at')
+    
+    # Calculate totals (using all payments, not just filtered ones for accurate totals)
+    all_payments = Payment.objects.filter(patient=patient)
+    total_treatment_cost = all_payments.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_paid = all_payments.aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
     balance_due = total_treatment_cost - total_paid
+    
+    # Pagination
+    paginator = Paginator(payments, 5)  # Show 5 payments per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     
     context = {
         'patient': patient,
-        'payments': payments,
+        'page_obj': page_obj,
         'total_treatment_cost': total_treatment_cost,
         'total_paid': total_paid,
         'balance_due': balance_due,
+        'search_query': search_query,
     }
     return render(request, 'app/payment_list.html', context)
 
@@ -1204,20 +1231,20 @@ def payment_balance(request, patient_id):
     balance_due = total_amount_billed - total_paid
     
     if request.method == 'POST':
-        form = PaymentForm(request.POST, patient=patient)
-        formset = PaymentItemFormSet(request.POST, instance=Payment())
+        # Create a copy of the POST data so we can modify it
+        post_data = request.POST.copy()
+        
+        # Set is_balance_payment to True
+        post_data['is_balance_payment'] = True
+        
+        form = PaymentForm(post_data, patient=patient)
+        formset = PaymentItemFormSet(post_data, instance=Payment())
         
         if form.is_valid() and formset.is_valid():
             # Save the payment
             payment = form.save(commit=False)
             payment.patient = patient
             payment.created_by = request.user
-            
-            # For balance payments, we want to set total_amount to 0 
-            # and amount_paid to the actual payment amount
-            if 'is_balance_payment' in request.POST and request.POST['is_balance_payment'] == 'true':
-                payment.total_amount = 0
-            
             payment.save()
             
             # Save the payment items
@@ -1229,8 +1256,9 @@ def payment_balance(request, patient_id):
     else:
         # Pre-fill the form with the outstanding balance
         initial_data = {
-            'total_amount': 0,  # For balance payments, set total_amount to 0
+            'total_amount': Decimal('0.00'),  # For balance payments, set total_amount to 0
             'amount_paid': balance_due,  # The amount being paid towards the balance
+            'is_balance_payment': True,  # Set is_balance_payment to True
         }
         form = PaymentForm(patient=patient, initial=initial_data)
         
