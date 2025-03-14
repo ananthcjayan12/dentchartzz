@@ -33,7 +33,7 @@ class Patient(models.Model):
     date_of_birth = models.DateField(blank=True, null=True)
     phone = models.CharField(max_length=15)
     email = models.EmailField(blank=True, null=True)
-    address = models.TextField()
+    address = models.TextField(blank=True, null=True)
     
     # Medical Information
     chief_complaint = models.TextField(blank=True, null=True)

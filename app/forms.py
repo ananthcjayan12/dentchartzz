@@ -1,6 +1,7 @@
 from django import forms
 from django.forms import inlineformset_factory
 from .models import Patient, Appointment, Treatment, Payment, PaymentItem
+from decimal import Decimal
 
 class PatientForm(forms.ModelForm):
     class Meta:
@@ -120,6 +121,8 @@ class TreatmentForm(forms.ModelForm):
             self.fields['appointment'].queryset = Appointment.objects.filter(patient=patient)
 
 class PaymentForm(forms.ModelForm):
+    is_balance_payment = forms.BooleanField(required=False, widget=forms.HiddenInput())
+    
     class Meta:
         model = Payment
         fields = ['payment_date', 'payment_method', 'total_amount', 'amount_paid', 'notes']
@@ -145,6 +148,16 @@ class PaymentForm(forms.ModelForm):
                 total_cost = Treatment.objects.filter(patient=patient).aggregate(Sum('cost'))['cost__sum'] or 0
                 total_paid = Payment.objects.filter(patient=patient).aggregate(Sum('amount_paid'))['amount_paid__sum'] or 0
                 self.fields['total_amount'].initial = total_cost - total_paid
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        is_balance_payment = cleaned_data.get('is_balance_payment')
+        
+        # If this is a balance payment, set total_amount to 0
+        if is_balance_payment:
+            cleaned_data['total_amount'] = Decimal('0.00')
+        
+        return cleaned_data
 
 # Create a formset for PaymentItems
 PaymentItemFormSet = inlineformset_factory(
