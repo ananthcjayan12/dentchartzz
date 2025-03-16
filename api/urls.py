@@ -10,6 +10,7 @@ from api.views import treatments
 from api.views import payments
 from api.views import auth
 from api.views import dentists
+from api.views import dental_chart
 
 router = DefaultRouter()
 # Register viewsets
@@ -44,4 +45,30 @@ urlpatterns = [
     
     # Time slots endpoint
     path('clinics/<int:clinic_id>/time-slots/', appointments.AppointmentViewSet.as_view({'get': 'time_slots'}), name='time_slots'),
+    
+    # Dental Chart endpoints
+    path('clinics/<int:clinic_id>/dental-conditions/', 
+         dental_chart.DentalConditionViewSet.as_view({'get': 'list'}), 
+         name='dental-conditions'),
+    path('clinics/<int:clinic_id>/dental-procedures/', 
+         dental_chart.DentalProcedureViewSet.as_view({'get': 'list'}), 
+         name='dental-procedures'),
+    path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/', 
+         dental_chart.DentalChartViewSet.as_view({'get': 'retrieve'}), 
+         name='dental-chart'),
+    path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/history/', 
+         dental_chart.DentalChartViewSet.as_view({'get': 'history'}), 
+         name='dental-chart-history'),
+    path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/tooth/<int:tooth_number>/condition/', 
+         dental_chart.DentalChartViewSet.as_view({'post': 'add_tooth_condition'}), 
+         name='add-tooth-condition'),
+    path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/tooth/<int:tooth_number>/procedure/', 
+         dental_chart.DentalChartViewSet.as_view({'post': 'add_tooth_procedure'}), 
+         name='add-tooth-procedure'),
+    path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/tooth/<int:tooth_number>/condition/<int:condition_id>/', 
+         dental_chart.DentalChartViewSet.as_view({
+             'patch': 'update_tooth_condition',
+             'delete': 'delete_tooth_condition'
+         }), 
+         name='tooth-condition-detail'),
 ] 
