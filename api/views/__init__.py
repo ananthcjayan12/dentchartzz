@@ -15,6 +15,7 @@ from api.views.auth import (
     ClinicSelectionView,
     PasswordChangeView
 )
+from api.views.dentists import DentistViewSet
 
 # This allows importing directly from api.views
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     'TreatmentViewSet',
     'ToothViewSet',
     'PaymentViewSet',
+    'DentistViewSet',
     'CustomTokenObtainPairView',
     'RegisterView',
     'LogoutView',

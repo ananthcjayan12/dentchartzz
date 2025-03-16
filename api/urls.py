@@ -9,6 +9,7 @@ from api.views import appointments
 from api.views import treatments
 from api.views import payments
 from api.views import auth
+from api.views import dentists
 
 router = DefaultRouter()
 # Register viewsets
@@ -25,6 +26,7 @@ clinic_router.register(r'appointments', appointments.AppointmentViewSet, basenam
 clinic_router.register(r'treatments', treatments.TreatmentViewSet, basename='clinic-treatment')
 clinic_router.register(r'teeth', treatments.ToothViewSet, basename='clinic-tooth')
 clinic_router.register(r'payments', payments.PaymentViewSet, basename='clinic-payment')
+clinic_router.register(r'dentists', dentists.DentistViewSet, basename='clinic-dentist')
 
 urlpatterns = [
     path('', include(router.urls)),
