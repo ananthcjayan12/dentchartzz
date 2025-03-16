@@ -4,9 +4,11 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Q
 from datetime import datetime, timedelta, date
-from api.models import Appointment
+from api.models import Appointment, ClinicMembership
 from api.views.base import ClinicModelViewSet
 from api.serializers.appointments import AppointmentSerializer, AppointmentDetailSerializer
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
 
 class AppointmentViewSet(ClinicModelViewSet):
     """
@@ -131,72 +133,87 @@ class AppointmentViewSet(ClinicModelViewSet):
         serializer = self.get_serializer(appointment)
         return Response(serializer.data)
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='time_slots')
     def time_slots(self, request, clinic_id=None):
-        """
-        Get available time slots for a dentist on a specific date.
+        """Get available time slots for a given date and dentist."""
+        clinic = self.get_clinic_from_url()
         
-        This endpoint returns a list of time slots from 9 AM to 5 PM in 30-minute intervals,
-        marking slots that overlap with existing appointments as unavailable.
-        """
+        # Validate required parameters
+        date_str = request.query_params.get('date')
+        dentist_id = request.query_params.get('dentist_id') or request.query_params.get('dentist')
+        
+        if not date_str or not dentist_id:
+            return Response(
+                {'error': 'Both date and dentist_id are required parameters.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         try:
-            dentist_id = request.query_params.get('dentist')
-            date_str = request.query_params.get('date')
-            selected_time = request.query_params.get('selected_time', '')
-            
-            if not dentist_id or not date_str:
-                return Response({'error': 'Missing required parameters'}, status=status.HTTP_400_BAD_REQUEST)
-            
             # Parse the date
-            selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            appointment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
             
-            # Generate time slots from 9 AM to 5 PM in 30-minute intervals
+            # Validate the dentist
+            dentist = get_object_or_404(User, id=dentist_id)
+            
+            # Check if the dentist is associated with this clinic
+            if not ClinicMembership.objects.filter(
+                user=dentist, clinic=clinic, role__in=['dentist', 'administrator']
+            ).exists():
+                return Response(
+                    {'error': 'The specified dentist is not associated with this clinic.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Get the clinic's working hours for the day of the week
+            day_of_week = appointment_date.strftime('%A').lower()
+            working_hours = getattr(clinic, f"{day_of_week}_hours", None)
+            
+            # Use default hours if not set
+            if not working_hours:
+                working_hours = "09:00 - 17:00"
+            elif working_hours.lower() == "closed":
+                return Response(
+                    {'error': f'The clinic is closed on {day_of_week.capitalize()}.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Parse working hours
+            start_time_str, end_time_str = working_hours.split('-')
+            start_time = datetime.strptime(start_time_str.strip(), '%H:%M').time()
+            end_time = datetime.strptime(end_time_str.strip(), '%H:%M').time()
+            
+            # Generate time slots
             time_slots = []
-            start_hour = 9  # 9 AM
-            end_hour = 17   # 5 PM
+            current_time = datetime.combine(appointment_date, start_time)
+            end_datetime = datetime.combine(appointment_date, end_time)
+            selected_time = request.query_params.get('selected_time')
             
-            current_time = datetime.combine(date.today(), datetime.min.time()) + timedelta(hours=start_hour)
-            end_time = datetime.combine(date.today(), datetime.min.time()) + timedelta(hours=end_hour)
-            
-            while current_time < end_time:
+            while current_time < end_datetime:
+                # Check if this time slot is already booked
+                slot_end_time = current_time + timedelta(minutes=30)
+                is_booked = Appointment.objects.filter(
+                    clinic=clinic,
+                    dentist=dentist,
+                    date=appointment_date,
+                    start_time__lt=slot_end_time.time(),
+                    end_time__gt=current_time.time()
+                ).exists()
+                
+                time_str = current_time.strftime('%H:%M')
                 time_slots.append({
-                    'time': current_time.time().strftime('%H:%M'),
-                    'display': current_time.strftime('%I:%M %p'),
-                    'available': True,
-                    'selected': current_time.time().strftime('%H:%M') == selected_time
+                    'time': time_str,
+                    'display': time_str,  # Add display field for compatibility
+                    'available': not is_booked,  # Use 'available' instead of 'is_available'
+                    'selected': selected_time == time_str if selected_time else False
                 })
+                
                 current_time += timedelta(minutes=30)
             
-            # Get the clinic from the URL
-            clinic = self.get_clinic_from_url()
-            
-            # Mark booked slots as unavailable
-            booked_appointments = Appointment.objects.filter(
-                clinic=clinic,
-                dentist_id=dentist_id,
-                date=selected_date,
-                status='scheduled'
-            )
-            
-            # If we're editing an existing appointment, exclude it from the booked appointments
-            appointment_id = request.query_params.get('appointment_id')
-            if appointment_id:
-                booked_appointments = booked_appointments.exclude(pk=appointment_id)
-            
-            for appointment in booked_appointments:
-                # Mark all slots that overlap with this appointment as unavailable
-                for slot in time_slots:
-                    slot_time = datetime.strptime(slot['time'], '%H:%M').time()
-                    slot_start = datetime.combine(selected_date, slot_time)
-                    slot_end = slot_start + timedelta(minutes=30)
-                    appointment_start = datetime.combine(selected_date, appointment.start_time)
-                    appointment_end = datetime.combine(selected_date, appointment.end_time)
-                    
-                    if (slot_start < appointment_end and slot_end > appointment_start):
-                        slot['available'] = False
-            
+            # Return the time slots in the format expected by the tests
             return Response({'time_slots': time_slots})
+        
         except ValueError:
-            return Response({'error': 'Invalid date format'}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+            return Response(
+                {'error': 'Invalid date format. Use YYYY-MM-DD.'},
+                status=status.HTTP_400_BAD_REQUEST
+            ) 

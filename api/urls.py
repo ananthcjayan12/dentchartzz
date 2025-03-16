@@ -44,7 +44,9 @@ urlpatterns = [
     path('auth/change-password/', auth.PasswordChangeView.as_view(), name='change_password'),
     
     # Time slots endpoint
-    path('clinics/<int:clinic_id>/time-slots/', appointments.AppointmentViewSet.as_view({'get': 'time_slots'}), name='time_slots'),
+    path('clinics/<int:clinic_id>/time-slots/', 
+         appointments.AppointmentViewSet.as_view({'get': 'time_slots'}), 
+         name='time_slots'),
     
     # Dental Chart endpoints
     path('clinics/<int:clinic_id>/dental-conditions/', 
