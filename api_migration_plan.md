@@ -1,6 +1,6 @@
 # DentChartzz API Migration Plan
 
-This document outlines the plan for migrating the DentChartzz monolithic application to a separate API-driven architecture with a Django backend and React/Next.js frontend. The new architecture will support multiple clinics, allowing the software to be sold as a SaaS solution.
+This document outlines the plan for migrating the DentChartzz monolithic application to a separate API-driven architecture with a Django backend and React Native Web frontend with Shadcn UI. The new architecture will support multiple clinics, allowing the software to be sold as a SaaS solution.
 
 ## Multi-Clinic Architecture
 
@@ -73,40 +73,62 @@ dentchartzz-api/
 └── requirements.txt       # Including Django REST framework
 ```
 
-### Frontend (React/Next.js)
+### Frontend (React Native Web with Shadcn UI)
 ```
-dentchartzz-frontend/
-├── public/
-├── src/
+dentchartzz-web/
+├── public/                # Static assets
+├── src/                   # Source code
+│   ├── screens/           # Application screens
+│   │   ├── auth/          # Authentication screens
+│   │   │   ├── LoginScreen.tsx
+│   │   │   ├── RegisterScreen.tsx
+│   │   │   └── ClinicSelectScreen.tsx
+│   │   ├── dashboard/     # Dashboard screen
+│   │   ├── clinics/       # Clinic management screens
+│   │   ├── patients/      # Patient management screens
+│   │   ├── appointments/  # Appointment management screens
+│   │   ├── treatments/    # Treatment management screens
+│   │   └── payments/      # Payment management screens
 │   ├── components/        # Reusable UI components
-│   │   ├── layout/
+│   │   ├── ui/            # Shadcn UI components
+│   │   ├── layout/        # Layout components
 │   │   ├── clinics/       # Clinic management components
-│   │   ├── patients/
-│   │   ├── appointments/
-│   │   ├── treatments/
-│   │   ├── payments/
-│   │   └── common/
-│   ├── pages/             # Page components
-│   │   ├── clinics/       # Clinic management pages
-│   │   ├── patients/
-│   │   ├── appointments/
-│   │   ├── treatments/
-│   │   └── payments/
+│   │   ├── patients/      # Patient management components
+│   │   ├── appointments/  # Appointment management components
+│   │   ├── treatments/    # Treatment management components
+│   │   ├── payments/      # Payment management components
+│   │   └── common/        # Common components
+│   ├── navigation/        # Navigation configuration
+│   │   ├── AppNavigator.tsx # Main app navigation
+│   │   ├── AuthNavigator.tsx # Authentication navigation
+│   │   └── NavigationService.ts # Navigation utilities
+│   ├── lib/               # Utility functions and helpers
+│   │   ├── api.ts         # Base API configuration
+│   │   ├── auth.ts        # Authentication utilities
+│   │   └── utils.ts       # General utilities
 │   ├── services/          # API service layer
-│   │   ├── api.js         # Base API configuration
-│   │   ├── clinicService.js # Clinic management service
-│   │   ├── patientService.js
-│   │   ├── appointmentService.js
-│   │   ├── treatmentService.js
-│   │   └── paymentService.js
+│   │   ├── clinicService.ts # Clinic management service
+│   │   ├── patientService.ts # Patient management service
+│   │   ├── appointmentService.ts # Appointment management service
+│   │   ├── treatmentService.ts # Treatment management service
+│   │   └── paymentService.ts # Payment management service
 │   ├── hooks/             # Custom React hooks
-│   ├── utils/             # Utility functions
+│   │   ├── useAuth.ts     # Authentication hook
+│   │   ├── useClinic.ts   # Clinic context hook
+│   │   └── useApi.ts      # API hook
 │   ├── context/           # React context providers
-│   │   ├── AuthContext.js
-│   │   └── ClinicContext.js # Current clinic context
-│   └── styles/            # CSS/SCSS styles
-├── package.json
-└── README.md
+│   │   ├── AuthContext.tsx # Authentication context
+│   │   └── ClinicContext.tsx # Current clinic context
+│   ├── constants/         # Constants and configuration
+│   │   ├── theme.ts       # Theme configuration
+│   │   └── config.ts      # App configuration
+│   └── types/             # TypeScript type definitions
+├── index.js               # Entry point
+├── webpack.config.js      # Webpack configuration for web
+├── babel.config.js        # Babel configuration
+├── tsconfig.json          # TypeScript configuration
+├── package.json           # Dependencies
+└── README.md              # Documentation
 ```
 
 ## Implementation Phases
@@ -199,24 +221,26 @@ dentchartzz-frontend/
   - [x] Document all endpoints
   - [x] Create usage examples
 
-### Phase 2: Frontend Development
+### Phase 2: Web Frontend Development with React Native Web
 
 - [ ] **2.1. Project Setup**
-  - [ ] Create new Next.js project
-  - [ ] Install required packages (axios, formik, yup, react-query, etc.)
+  - [ ] Create new React Native Web project with TypeScript
+  - [ ] Install required packages (axios, react-hook-form, zod, react-query, etc.)
+  - [ ] Set up Shadcn UI for React Native Web
+  - [ ] Configure React Navigation for web
   - [ ] Set up project structure
   - [ ] Configure environment variables
 
 - [ ] **2.2. Authentication and Clinic Selection**
-  - [ ] Create login page
+  - [ ] Create login screen
   - [ ] Implement authentication service
   - [ ] Create clinic selection interface
-  - [ ] Set up token storage and refresh
-  - [ ] Create protected routes
+  - [ ] Set up token storage with localStorage for web
+  - [ ] Implement protected routes with React Navigation
 
 - [ ] **2.3. Clinic Management**
   - [ ] Create clinic creation interface
-  - [ ] Create clinic settings interface
+  - [ ] Create clinic settings screens
   - [ ] Create user management interface
   - [ ] Implement clinic switching
 
@@ -229,26 +253,27 @@ dentchartzz-frontend/
   - [ ] Implement payment service
 
 - [ ] **2.5. UI Components**
+  - [ ] Set up Shadcn UI components for React Native Web
   - [ ] Create layout components with clinic context
   - [ ] Create clinic components
   - [ ] Create patient components
   - [ ] Create appointment components
   - [ ] Create treatment components
   - [ ] Create payment components
-  - [ ] Create dental chart component
+  - [ ] Create dental chart component for web
 
-- [ ] **2.6. Pages**
-  - [ ] Create dashboard page with clinic overview
-  - [ ] Create clinic management pages
-  - [ ] Create patient list and detail pages
-  - [ ] Create appointment list and detail pages
-  - [ ] Create treatment pages
-  - [ ] Create payment pages
+- [ ] **2.6. Screens**
+  - [ ] Create dashboard screen with clinic overview
+  - [ ] Create clinic management screens
+  - [ ] Create patient list and detail screens
+  - [ ] Create appointment list and detail screens
+  - [ ] Create treatment screens
+  - [ ] Create payment screens
 
 - [ ] **2.7. Testing**
   - [ ] Write tests for components
   - [ ] Write tests for API services
-  - [ ] Write end-to-end tests
+  - [ ] Write end-to-end tests with Cypress
 
 ### Phase 3: Integration and Testing
 
@@ -444,18 +469,32 @@ class PatientViewSet(viewsets.ModelViewSet):
 
 ### Clinic Context
 
-```javascript
-// src/context/ClinicContext.js
+```typescript
+// src/context/ClinicContext.tsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { getClinics } from '../services/clinicService';
 
-const ClinicContext = createContext();
+type Clinic = {
+  id: number;
+  name: string;
+  // other clinic properties
+};
 
-export const ClinicProvider = ({ children }) => {
+type ClinicContextType = {
+  clinics: Clinic[];
+  currentClinic: Clinic | null;
+  loading: boolean;
+  switchClinic: (clinicId: number) => void;
+  refreshClinics: () => Promise<void>;
+};
+
+const ClinicContext = createContext<ClinicContextType | undefined>(undefined);
+
+export const ClinicProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const { user } = useAuth();
-  const [clinics, setClinics] = useState([]);
-  const [currentClinic, setCurrentClinic] = useState(null);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [currentClinic, setCurrentClinic] = useState<Clinic | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -477,10 +516,10 @@ export const ClinicProvider = ({ children }) => {
       // Set current clinic from localStorage or use the first one
       const savedClinicId = localStorage.getItem('currentClinicId');
       if (savedClinicId && response.results.some(c => c.id === parseInt(savedClinicId))) {
-        setCurrentClinic(response.results.find(c => c.id === parseInt(savedClinicId)));
+        setCurrentClinic(response.results.find(c => c.id === parseInt(savedClinicId)) || null);
       } else if (response.results.length > 0) {
         setCurrentClinic(response.results[0]);
-        localStorage.setItem('currentClinicId', response.results[0].id);
+        localStorage.setItem('currentClinicId', response.results[0].id.toString());
       }
       
       setLoading(false);
@@ -490,11 +529,11 @@ export const ClinicProvider = ({ children }) => {
     }
   };
 
-  const switchClinic = (clinicId) => {
+  const switchClinic = (clinicId: number) => {
     const clinic = clinics.find(c => c.id === clinicId);
     if (clinic) {
       setCurrentClinic(clinic);
-      localStorage.setItem('currentClinicId', clinicId);
+      localStorage.setItem('currentClinicId', clinicId.toString());
     }
   };
 
@@ -511,23 +550,28 @@ export const ClinicProvider = ({ children }) => {
   );
 };
 
-export const useClinic = () => useContext(ClinicContext);
+export const useClinic = () => {
+  const context = useContext(ClinicContext);
+  if (context === undefined) {
+    throw new Error('useClinic must be used within a ClinicProvider');
+  }
+  return context;
+};
 ```
 
 ### API Service with Clinic Context
 
-```javascript
-// src/services/api.js
+```typescript
+// src/lib/api.ts
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // For session authentication
 });
 
 // Request interceptor for adding auth token and clinic context

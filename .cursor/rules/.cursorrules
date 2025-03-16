@@ -1,0 +1,18 @@
+
+# 1. Progress and Summary Management
+- Always update api_migration_plan.md after each step
+- Update summary.md with completed steps and their outcomes
+
+# 2. Implementation Approach
+- Keep solutions simple and straightforward
+- Avoid over-engineering
+- Focus on minimal, effective implementations
+
+# 3. Step-by-Step Execution
+- Break down tasks into small, manageable steps
+- Request user confirmation before proceeding with each step
+- Follow the order specified in progress.md
+- Do not execute multiple steps simultaneously
+- Wait for explicit user approval before moving to the next step
+
+# 4 always use bash for commands

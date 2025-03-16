@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "dentchartzz api collection",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
