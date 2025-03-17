@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from api.models import Patient, Clinic
+from django.utils import timezone
 
 class DentalCondition(models.Model):
     """Model for dental conditions like cavity, fracture, etc."""
@@ -10,6 +11,8 @@ class DentalCondition(models.Model):
     description = models.TextField(blank=True)
     color_code = models.CharField(max_length=7, blank=True)  # Hex color code
     icon = models.CharField(max_length=50, blank=True)
+    is_standard = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
     
     def __str__(self):
         return f"{self.name} ({self.code})"
@@ -23,6 +26,8 @@ class DentalProcedure(models.Model):
     category = models.CharField(max_length=50, blank=True)
     default_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     duration_minutes = models.IntegerField(default=30)
+    is_standard = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
     
     def __str__(self):
         return f"{self.name} ({self.code})"

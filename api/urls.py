@@ -50,10 +50,10 @@ urlpatterns = [
     
     # Dental Chart endpoints
     path('clinics/<int:clinic_id>/dental-conditions/', 
-         dental_chart.DentalConditionViewSet.as_view({'get': 'list'}), 
+         dental_chart.DentalConditionViewSet.as_view({'get': 'list', 'post': 'create'}), 
          name='dental-conditions'),
     path('clinics/<int:clinic_id>/dental-procedures/', 
-         dental_chart.DentalProcedureViewSet.as_view({'get': 'list'}), 
+         dental_chart.DentalProcedureViewSet.as_view({'get': 'list', 'post': 'create'}), 
          name='dental-procedures'),
     path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/', 
          dental_chart.DentalChartViewSet.as_view({'get': 'retrieve'}), 

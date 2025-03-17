@@ -8,12 +8,12 @@ from api.models import Patient
 class DentalConditionSerializer(serializers.ModelSerializer):
     class Meta:
         model = DentalCondition
-        fields = ['id', 'name', 'code', 'description', 'color_code', 'icon']
+        fields = ['id', 'name', 'code', 'description', 'color_code', 'icon', 'is_standard', 'created_at']
 
 class DentalProcedureSerializer(serializers.ModelSerializer):
     class Meta:
         model = DentalProcedure
-        fields = ['id', 'name', 'code', 'description', 'category', 'default_price', 'duration_minutes']
+        fields = ['id', 'name', 'code', 'description', 'category', 'default_price', 'duration_minutes', 'is_standard', 'created_at']
 
 class DentalChartConditionSerializer(serializers.ModelSerializer):
     condition_name = serializers.CharField(source='condition.name', read_only=True)

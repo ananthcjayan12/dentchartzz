@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import datetime
 from rest_framework.pagination import PageNumberPagination
+from django.db import models
 
 from api.models.dental_chart import (
     DentalCondition, DentalProcedure, DentalChartTooth, 
@@ -23,11 +24,82 @@ class DentalConditionViewSet(ClinicModelViewSet):
     """ViewSet for dental conditions."""
     queryset = DentalCondition.objects.all()
     serializer_class = DentalConditionSerializer
+    
+    def get_queryset(self):
+        """Filter conditions by clinic and search parameters."""
+        queryset = super().get_queryset()
+        
+        # Apply search filter if provided
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                models.Q(name__icontains=search) | 
+                models.Q(description__icontains=search) |
+                models.Q(code__icontains=search)
+            )
+        
+        return queryset.order_by('name')
+    
+    def create(self, request, *args, **kwargs):
+        """Create a custom dental condition."""
+        clinic = self.get_clinic_from_url()
+        
+        # Add clinic to request data
+        data = request.data.copy()
+        data['clinic'] = clinic.id
+        
+        # Set is_standard to False for custom conditions
+        data['is_standard'] = False
+        
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 class DentalProcedureViewSet(ClinicModelViewSet):
     """ViewSet for dental procedures."""
     queryset = DentalProcedure.objects.all()
     serializer_class = DentalProcedureSerializer
+    
+    def get_queryset(self):
+        """Filter procedures by clinic and category."""
+        queryset = super().get_queryset()
+        
+        # Apply category filter if provided
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+        
+        # Apply search filter if provided
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                models.Q(name__icontains=search) | 
+                models.Q(description__icontains=search) |
+                models.Q(code__icontains=search)
+            )
+        
+        return queryset.order_by('name')
+    
+    def create(self, request, *args, **kwargs):
+        """Create a custom dental procedure."""
+        clinic = self.get_clinic_from_url()
+        
+        # Add clinic to request data
+        data = request.data.copy()
+        data['clinic'] = clinic.id
+        
+        # Set is_standard to False for custom procedures
+        data['is_standard'] = False
+        
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
     """ViewSet for managing dental charts."""
@@ -99,7 +171,10 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         clinic = self.get_clinic_from_url()
         patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
         
-        history = ChartHistory.objects.filter(patient=patient)
+        # Get chart history for this patient
+        history = ChartHistory.objects.filter(patient=patient).order_by('-date')
+        
+        # Paginate results
         page = self.paginate_queryset(history)
         if page is not None:
             serializer = ChartHistorySerializer(page, many=True)
@@ -119,9 +194,23 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         
         tooth = get_object_or_404(DentalChartTooth, patient=patient, number=tooth_number)
         
-        # Validate the condition exists in this clinic
-        condition_id = request.data.get('condition_id')
-        condition = get_object_or_404(DentalCondition, id=condition_id, clinic=clinic)
+        # Check if we're creating a custom condition or using an existing one
+        if 'custom_name' in request.data:
+            # Create a new custom condition
+            custom_condition = DentalCondition.objects.create(
+                clinic=clinic,
+                name=request.data.get('custom_name'),
+                code=request.data.get('custom_code', ''),
+                description=request.data.get('custom_description', ''),
+                color_code=request.data.get('custom_color_code', '#000000'),
+                icon=request.data.get('custom_icon', ''),
+                is_standard=False
+            )
+            condition = custom_condition
+        else:
+            # Validate the condition exists in this clinic
+            condition_id = request.data.get('condition_id')
+            condition = get_object_or_404(DentalCondition, id=condition_id, clinic=clinic)
         
         # Create the tooth condition
         tooth_condition = DentalChartCondition.objects.create(
@@ -146,8 +235,13 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             }
         )
         
-        serializer = DentalChartConditionSerializer(tooth_condition)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # Prepare response with additional fields
+        response_data = DentalChartConditionSerializer(tooth_condition).data
+        response_data['condition_name'] = condition.name
+        response_data['condition_code'] = condition.code
+        response_data['created_by'] = request.user.get_full_name() or request.user.username
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['patch'], url_path='tooth/(?P<tooth_number>[0-9]+)/condition/(?P<condition_id>[0-9]+)')
     def update_tooth_condition(self, request, clinic_id=None, patient_id=None, tooth_number=None, condition_id=None):
@@ -221,9 +315,24 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         
         tooth = get_object_or_404(DentalChartTooth, patient=patient, number=tooth_number)
         
-        # Validate the procedure exists in this clinic
-        procedure_id = request.data.get('procedure_id')
-        procedure = get_object_or_404(DentalProcedure, id=procedure_id, clinic=clinic)
+        # Check if we're creating a custom procedure or using an existing one
+        if 'custom_name' in request.data:
+            # Create a new custom procedure
+            custom_procedure = DentalProcedure.objects.create(
+                clinic=clinic,
+                name=request.data.get('custom_name'),
+                code=request.data.get('custom_code', ''),
+                description=request.data.get('custom_description', ''),
+                default_price=request.data.get('price', 0),
+                duration_minutes=request.data.get('duration_minutes', 30),
+                category=request.data.get('category', ''),
+                is_standard=False
+            )
+            procedure = custom_procedure
+        else:
+            # Validate the procedure exists in this clinic
+            procedure_id = request.data.get('procedure_id')
+            procedure = get_object_or_404(DentalProcedure, id=procedure_id, clinic=clinic)
         
         # Parse date_performed if provided
         date_performed = None
@@ -263,5 +372,10 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             }
         )
         
-        serializer = DentalChartProcedureSerializer(tooth_procedure)
-        return Response(serializer.data, status=status.HTTP_201_CREATED) 
+        # Prepare response with additional fields
+        response_data = DentalChartProcedureSerializer(tooth_procedure).data
+        response_data['procedure_name'] = procedure.name
+        response_data['procedure_code'] = procedure.code
+        response_data['performed_by'] = request.user.get_full_name() or request.user.username if date_performed else None
+        
+        return Response(response_data, status=status.HTTP_201_CREATED) 
