@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from api.models import Patient, Clinic
 from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class DentalCondition(models.Model):
     """Model for dental conditions like cavity, fracture, etc."""
@@ -106,18 +108,8 @@ class DentalChartProcedure(models.Model):
     def __str__(self):
         return f"{self.procedure.name} on Tooth {self.tooth.number}"
 
-class ProcedureNote(models.Model):
-    """Model for procedure progress notes."""
-    procedure = models.ForeignKey('DentalChartProcedure', on_delete=models.CASCADE, related_name='notes')
-    note = models.TextField()
-    appointment_date = models.DateTimeField()
-    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ['-appointment_date']
-
 class ChartHistory(models.Model):
+    """Model for tracking changes to dental charts."""
     ACTIONS = [
         ('add_condition', 'Add Condition'),
         ('update_condition', 'Update Condition'),
@@ -129,7 +121,7 @@ class ChartHistory(models.Model):
     ]
     
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     date = models.DateTimeField(auto_now_add=True)
     action = models.CharField(max_length=50, choices=ACTIONS)
     tooth_number = models.CharField(max_length=10)
@@ -144,10 +136,68 @@ class ChartHistory(models.Model):
             models.Index(fields=['patient', 'date'])
         ]
 
-    def __str__(self):
-        return f"{self.action} on Tooth {self.tooth_number} by {self.user.username}"
-    
-    def save(self, *args, **kwargs):
-        # Ensure that the tooth_number is always stored as a string
-        self.tooth_number = str(self.tooth_number)
-        super().save(*args, **kwargs) 
+class ProcedureNote(models.Model):
+    """Model for procedure progress notes."""
+    procedure = models.ForeignKey('DentalChartProcedure', on_delete=models.CASCADE, related_name='notes')
+    note = models.TextField()
+    appointment_date = models.DateTimeField()
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-appointment_date']
+
+@receiver(post_save, sender=Patient)
+def create_dental_chart(sender, instance, created, **kwargs):
+    """Create dental chart teeth when a patient is created."""
+    if created:
+        # Define permanent teeth data using FDI system
+        teeth_data = [
+            # Upper Right (1st quadrant)
+            {'number': '11', 'name': 'Upper Right Central Incisor', 'quadrant': 'upper_right'},
+            {'number': '12', 'name': 'Upper Right Lateral Incisor', 'quadrant': 'upper_right'},
+            {'number': '13', 'name': 'Upper Right Canine', 'quadrant': 'upper_right'},
+            {'number': '14', 'name': 'Upper Right First Premolar', 'quadrant': 'upper_right'},
+            {'number': '15', 'name': 'Upper Right Second Premolar', 'quadrant': 'upper_right'},
+            {'number': '16', 'name': 'Upper Right First Molar', 'quadrant': 'upper_right'},
+            {'number': '17', 'name': 'Upper Right Second Molar', 'quadrant': 'upper_right'},
+            {'number': '18', 'name': 'Upper Right Third Molar', 'quadrant': 'upper_right'},
+            
+            # Upper Left (2nd quadrant)
+            {'number': '21', 'name': 'Upper Left Central Incisor', 'quadrant': 'upper_left'},
+            {'number': '22', 'name': 'Upper Left Lateral Incisor', 'quadrant': 'upper_left'},
+            {'number': '23', 'name': 'Upper Left Canine', 'quadrant': 'upper_left'},
+            {'number': '24', 'name': 'Upper Left First Premolar', 'quadrant': 'upper_left'},
+            {'number': '25', 'name': 'Upper Left Second Premolar', 'quadrant': 'upper_left'},
+            {'number': '26', 'name': 'Upper Left First Molar', 'quadrant': 'upper_left'},
+            {'number': '27', 'name': 'Upper Left Second Molar', 'quadrant': 'upper_left'},
+            {'number': '28', 'name': 'Upper Left Third Molar', 'quadrant': 'upper_left'},
+            
+            # Lower Left (3rd quadrant)
+            {'number': '31', 'name': 'Lower Left Central Incisor', 'quadrant': 'lower_left'},
+            {'number': '32', 'name': 'Lower Left Lateral Incisor', 'quadrant': 'lower_left'},
+            {'number': '33', 'name': 'Lower Left Canine', 'quadrant': 'lower_left'},
+            {'number': '34', 'name': 'Lower Left First Premolar', 'quadrant': 'lower_left'},
+            {'number': '35', 'name': 'Lower Left Second Premolar', 'quadrant': 'lower_left'},
+            {'number': '36', 'name': 'Lower Left First Molar', 'quadrant': 'lower_left'},
+            {'number': '37', 'name': 'Lower Left Second Molar', 'quadrant': 'lower_left'},
+            {'number': '38', 'name': 'Lower Left Third Molar', 'quadrant': 'lower_left'},
+            
+            # Lower Right (4th quadrant)
+            {'number': '41', 'name': 'Lower Right Central Incisor', 'quadrant': 'lower_right'},
+            {'number': '42', 'name': 'Lower Right Lateral Incisor', 'quadrant': 'lower_right'},
+            {'number': '43', 'name': 'Lower Right Canine', 'quadrant': 'lower_right'},
+            {'number': '44', 'name': 'Lower Right First Premolar', 'quadrant': 'lower_right'},
+            {'number': '45', 'name': 'Lower Right Second Premolar', 'quadrant': 'lower_right'},
+            {'number': '46', 'name': 'Lower Right First Molar', 'quadrant': 'lower_right'},
+            {'number': '47', 'name': 'Lower Right Second Molar', 'quadrant': 'lower_right'},
+            {'number': '48', 'name': 'Lower Right Third Molar', 'quadrant': 'lower_right'},
+        ]
+        
+        # Create teeth records
+        for tooth_data in teeth_data:
+            DentalChartTooth.objects.create(
+                patient=instance,
+                dentition_type='permanent',
+                **tooth_data
+            )

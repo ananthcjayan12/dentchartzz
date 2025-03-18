@@ -64,7 +64,6 @@ class DentalChartToothSerializer(serializers.ModelSerializer):
         model = DentalChartTooth
         fields = [
             'number',
-            'universal_number',
             'dentition_type',
             'name',
             'quadrant',

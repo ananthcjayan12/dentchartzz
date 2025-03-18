@@ -1106,4 +1106,17 @@ class TestDentalChartEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['count'] == 1  # Check count in paginated response
         assert len(response.data['results']) == 1  # Check results in paginated response
-        assert response.data['results'][0]['tooth_number'] == '1' 
+        assert response.data['results'][0]['tooth_number'] == '1'
+
+    def test_tooth_number_conversion(self):
+        """Test conversion between FDI and Universal numbering systems."""
+        # Test FDI to Universal conversion
+        assert DentalChartTooth.convert_tooth_number('43') == '27'
+        assert DentalChartTooth.convert_tooth_number('16') == '3'
+        
+        # Test Universal numbers pass through unchanged
+        assert DentalChartTooth.convert_tooth_number('1') == '1'
+        assert DentalChartTooth.convert_tooth_number('32') == '32'
+        
+        # Test primary teeth pass through unchanged
+        assert DentalChartTooth.convert_tooth_number('A') == 'A' 
