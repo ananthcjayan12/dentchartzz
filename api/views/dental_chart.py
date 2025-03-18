@@ -300,9 +300,6 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
         tooth = get_object_or_404(DentalChartTooth, patient=patient, number=str(tooth_number))
         
-        # Ensure the patient has teeth records
-        self._ensure_patient_has_teeth(patient)
-        
         # Check if we're creating a custom procedure or using an existing one
         if 'custom_name' in request.data:
             # Create a new custom procedure
@@ -364,9 +361,6 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         
         # Prepare response with additional fields
         response_data = DentalChartProcedureSerializer(tooth_procedure).data
-        response_data['procedure_name'] = procedure.name
-        response_data['procedure_code'] = procedure.code
-        response_data['performed_by'] = request.user.get_full_name() or request.user.username if date_performed else None
         
         return Response(response_data, status=status.HTTP_201_CREATED)
     
