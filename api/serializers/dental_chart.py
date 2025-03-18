@@ -17,13 +17,14 @@ class DentalProcedureSerializer(serializers.ModelSerializer):
 
 class DentalChartConditionSerializer(serializers.ModelSerializer):
     condition_name = serializers.CharField(source='condition.name', read_only=True)
+    condition_code = serializers.CharField(source='condition.code', read_only=True)
     created_by = serializers.CharField(source='created_by.get_full_name', read_only=True)
     updated_by = serializers.CharField(source='updated_by.get_full_name', read_only=True)
     
     class Meta:
         model = DentalChartCondition
         fields = [
-            'id', 'condition_id', 'condition_name', 'surface', 'notes', 
+            'id', 'condition_id', 'condition_name', 'condition_code', 'surface', 'notes', 
             'severity', 'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
         read_only_fields = ['created_at', 'updated_at', 'created_by', 'updated_by']
@@ -42,8 +43,8 @@ class DentalChartProcedureSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'performed_by']
 
 class DentalChartToothSerializer(serializers.ModelSerializer):
-    conditions = serializers.SerializerMethodField()
-    procedures = serializers.SerializerMethodField()
+    conditions = DentalChartConditionSerializer(many=True, read_only=True)
+    procedures = DentalChartProcedureSerializer(many=True, read_only=True)
 
     class Meta:
         model = DentalChartTooth
@@ -56,12 +57,6 @@ class DentalChartToothSerializer(serializers.ModelSerializer):
             'conditions',
             'procedures'
         ]
-    
-    def get_conditions(self, obj):
-        return DentalChartConditionSerializer(obj.conditions.all(), many=True).data
-    
-    def get_procedures(self, obj):
-        return DentalChartProcedureSerializer(obj.procedures.all(), many=True).data
 
 class DentalChartSerializer(serializers.ModelSerializer):
     teeth = DentalChartToothSerializer(source='dental_chart_teeth', many=True, read_only=True)

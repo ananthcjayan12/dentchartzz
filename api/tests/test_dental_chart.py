@@ -8,6 +8,7 @@ from api.models.dental_chart import (
     DentalCondition, DentalProcedure, DentalChartTooth, 
     DentalChartCondition, DentalChartProcedure, ChartHistory
 )
+from django.utils import timezone
 
 @pytest.mark.django_db
 class TestDentalChartEndpoints:
@@ -846,4 +847,177 @@ class TestDentalChartEndpoints:
         history = ChartHistory.objects.filter(patient=patient_without_teeth)
         assert history.count() == 1
         assert history.first().action == 'add_condition'
-        assert history.first().tooth_number == '1' 
+        assert history.first().tooth_number == '1'
+
+    def test_dental_chart_includes_conditions_and_procedures(self, authenticated_client, user, clinic, 
+                                                       clinic_membership, patient_with_teeth, 
+                                                       dental_condition, dental_procedure):
+        """Test that the dental chart endpoint returns teeth with their conditions and procedures."""
+        # Add a condition to a tooth
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth, 
+            number='1',
+            dentition_type='permanent'
+        )
+        
+        # Add a condition
+        condition = DentalChartCondition.objects.create(
+            tooth=tooth,
+            condition=dental_condition,
+            surface='occlusal',
+            notes='Test condition',
+            severity='moderate',
+            created_by=user,
+            updated_by=user
+        )
+        
+        # Add a procedure
+        procedure = DentalChartProcedure.objects.create(
+            tooth=tooth,
+            procedure=dental_procedure,
+            surface='occlusal',
+            notes='Test procedure',
+            date_performed=timezone.now(),
+            performed_by=user,
+            price=100.00,
+            status='completed'
+        )
+        
+        # Get the dental chart
+        url = reverse('dental-chart', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id
+        })
+        response = authenticated_client.get(url)
+        
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Find the tooth in the response
+        permanent_teeth = response.data['permanent_teeth']
+        tooth_data = next(t for t in permanent_teeth if t['number'] == '1')
+        
+        # Check that the tooth has conditions
+        assert 'conditions' in tooth_data
+        assert len(tooth_data['conditions']) == 1
+        condition_data = tooth_data['conditions'][0]
+        assert condition_data['condition_id'] == dental_condition.id
+        assert condition_data['condition_name'] == dental_condition.name
+        assert condition_data['condition_code'] == dental_condition.code
+        assert condition_data['surface'] == 'occlusal'
+        assert condition_data['notes'] == 'Test condition'
+        assert condition_data['severity'] == 'moderate'
+        assert condition_data['created_by'] == user.get_full_name()
+        
+        # Check that the tooth has procedures
+        assert 'procedures' in tooth_data
+        assert len(tooth_data['procedures']) == 1
+        procedure_data = tooth_data['procedures'][0]
+        assert procedure_data['procedure_id'] == dental_procedure.id
+        assert procedure_data['procedure_name'] == dental_procedure.name
+        assert procedure_data['procedure_code'] == dental_procedure.code
+        assert procedure_data['surface'] == 'occlusal'
+        assert procedure_data['notes'] == 'Test procedure'
+        assert procedure_data['price'] == '100.00'
+        assert procedure_data['status'] == 'completed'
+        assert procedure_data['performed_by'] == user.get_full_name()
+
+    def test_update_tooth_procedure(self, authenticated_client, user, clinic, 
+                                  clinic_membership, patient_with_teeth, dental_procedure):
+        """Test updating a procedure on a tooth."""
+        # First create a procedure
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth,
+            number='1',
+            dentition_type='permanent'
+        )
+        
+        procedure = DentalChartProcedure.objects.create(
+            tooth=tooth,
+            procedure=dental_procedure,
+            surface='occlusal',
+            notes='Initial procedure',
+            date_performed=timezone.now(),
+            performed_by=user,
+            price=100.00,
+            status='in_progress'
+        )
+        
+        # Update the procedure
+        url = reverse('tooth-procedure-detail', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '1',
+            'procedure_id': procedure.id
+        })
+        
+        update_data = {
+            'surface': 'mesial,distal',
+            'notes': 'Updated procedure notes',
+            'date_performed': '2024-01-15',
+            'price': 150.00,
+            'status': 'completed'
+        }
+        
+        response = authenticated_client.patch(url, update_data, format='json')
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['surface'] == 'mesial,distal'
+        assert response.data['notes'] == 'Updated procedure notes'
+        assert response.data['price'] == '150.00'
+        assert response.data['status'] == 'completed'
+        assert response.data['performed_by'] == user.get_full_name()
+        
+        # Verify history was created
+        history = ChartHistory.objects.filter(
+            patient=patient_with_teeth,
+            action='update_procedure'
+        ).latest('date')
+        assert history.tooth_number == '1'
+        assert float(history.details['price']) == 150.00
+        assert history.details['status'] == 'completed'
+
+    def test_delete_tooth_procedure(self, authenticated_client, user, clinic, 
+                                  clinic_membership, patient_with_teeth, dental_procedure):
+        """Test deleting a procedure from a tooth."""
+        # First create a procedure
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth,
+            number='1',
+            dentition_type='permanent'
+        )
+        
+        procedure = DentalChartProcedure.objects.create(
+            tooth=tooth,
+            procedure=dental_procedure,
+            surface='occlusal',
+            notes='Initial procedure',
+            date_performed=timezone.now(),
+            performed_by=user,
+            price=100.00,
+            status='in_progress'
+        )
+        
+        # Delete the procedure
+        url = reverse('tooth-procedure-detail', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '1',
+            'procedure_id': procedure.id
+        })
+        
+        response = authenticated_client.delete(url)
+        
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        
+        # Verify the procedure was deleted
+        assert not DentalChartProcedure.objects.filter(id=procedure.id).exists()
+        
+        # Verify history was created
+        history = ChartHistory.objects.filter(
+            patient=patient_with_teeth,
+            action='remove_procedure'
+        ).latest('date')
+        assert history.tooth_number == '1'
+        assert history.details['procedure_name'] == dental_procedure.name
+        assert float(history.details['price']) == 100.00
+        assert history.details['status'] == 'in_progress' 

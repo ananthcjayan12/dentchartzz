@@ -603,4 +603,90 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         response_data['procedure_code'] = procedure.code
         response_data['performed_by'] = request.user.get_full_name() or request.user.username if date_performed else None
         
-        return Response(response_data, status=status.HTTP_201_CREATED) 
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['patch'], url_path='tooth/(?P<tooth_number>[A-Za-z0-9]+)/procedure/(?P<procedure_id>[0-9]+)')
+    def update_tooth_procedure(self, request, clinic_id=None, patient_id=None, tooth_number=None, procedure_id=None):
+        """Update a procedure on a tooth."""
+        clinic = self.get_clinic_from_url()
+        patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
+        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=str(tooth_number))
+        tooth_procedure = get_object_or_404(DentalChartProcedure, id=procedure_id, tooth=tooth)
+        
+        # Update the fields
+        if 'surface' in request.data:
+            tooth_procedure.surface = request.data['surface']
+        if 'notes' in request.data:
+            tooth_procedure.notes = request.data['notes']
+        if 'price' in request.data:
+            tooth_procedure.price = request.data['price']
+        if 'status' in request.data:
+            tooth_procedure.status = request.data['status']
+        if 'date_performed' in request.data:
+            try:
+                date_performed = timezone.make_aware(
+                    datetime.strptime(request.data['date_performed'], '%Y-%m-%d')
+                )
+                tooth_procedure.date_performed = date_performed
+                tooth_procedure.performed_by = request.user
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid date format. Use YYYY-MM-DD.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        tooth_procedure.save()
+        
+        # Create history entry
+        ChartHistory.objects.create(
+            patient=patient,
+            user=request.user,
+            action='update_procedure',
+            tooth_number=str(tooth_number),
+            details={
+                'procedure_name': tooth_procedure.procedure.name,
+                'surface': tooth_procedure.surface,
+                'status': tooth_procedure.status,
+                'price': str(tooth_procedure.price)
+            }
+        )
+        
+        # Prepare response with additional fields
+        response_data = DentalChartProcedureSerializer(tooth_procedure).data
+        response_data['procedure_name'] = tooth_procedure.procedure.name
+        response_data['procedure_code'] = tooth_procedure.procedure.code
+        response_data['performed_by'] = tooth_procedure.performed_by.get_full_name() if tooth_procedure.performed_by else None
+        
+        return Response(response_data)
+    
+    @action(detail=True, methods=['delete'], url_path='tooth/(?P<tooth_number>[A-Za-z0-9]+)/procedure/(?P<procedure_id>[0-9]+)')
+    def delete_tooth_procedure(self, request, clinic_id=None, patient_id=None, tooth_number=None, procedure_id=None):
+        """Delete a procedure from a tooth."""
+        clinic = self.get_clinic_from_url()
+        patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
+        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=str(tooth_number))
+        tooth_procedure = get_object_or_404(DentalChartProcedure, id=procedure_id, tooth=tooth)
+        
+        # Record in history before deleting
+        procedure_name = tooth_procedure.procedure.name
+        surface = tooth_procedure.surface
+        procedure_status = tooth_procedure.status
+        price = tooth_procedure.price
+        
+        tooth_procedure.delete()
+        
+        # Create history entry
+        ChartHistory.objects.create(
+            patient=patient,
+            user=request.user,
+            action='remove_procedure',
+            tooth_number=str(tooth_number),
+            details={
+                'procedure_name': procedure_name,
+                'surface': surface,
+                'status': procedure_status,
+                'price': str(price)
+            }
+        )
+        
+        return Response(status=status.HTTP_204_NO_CONTENT) 

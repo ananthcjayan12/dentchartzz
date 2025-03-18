@@ -73,4 +73,10 @@ urlpatterns = [
              'delete': 'delete_tooth_condition'
          }), 
          name='tooth-condition-detail'),
+    path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/tooth/<str:tooth_number>/procedure/<int:procedure_id>/',
+         dental_chart.DentalChartViewSet.as_view({
+             'patch': 'update_tooth_procedure',
+             'delete': 'delete_tooth_procedure'
+         }),
+         name='tooth-procedure-detail'),
 ] 
