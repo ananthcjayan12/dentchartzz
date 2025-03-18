@@ -152,7 +152,7 @@ def create_dental_chart(sender, instance, created, **kwargs):
     """Create dental chart teeth when a patient is created."""
     if created:
         # Define permanent teeth data using FDI system
-        teeth_data = [
+        permanent_teeth_data = [
             # Upper Right (1st quadrant)
             {'number': '11', 'name': 'Upper Right Central Incisor', 'quadrant': 'upper_right'},
             {'number': '12', 'name': 'Upper Right Lateral Incisor', 'quadrant': 'upper_right'},
@@ -194,10 +194,49 @@ def create_dental_chart(sender, instance, created, **kwargs):
             {'number': '48', 'name': 'Lower Right Third Molar', 'quadrant': 'lower_right'},
         ]
         
-        # Create teeth records
-        for tooth_data in teeth_data:
+        # Define primary teeth data
+        primary_teeth_data = [
+            # Upper Right
+            {'number': 'A', 'name': 'Upper Right Primary Second Molar', 'quadrant': 'upper_right'},
+            {'number': 'B', 'name': 'Upper Right Primary First Molar', 'quadrant': 'upper_right'},
+            {'number': 'C', 'name': 'Upper Right Primary Canine', 'quadrant': 'upper_right'},
+            {'number': 'D', 'name': 'Upper Right Primary Lateral Incisor', 'quadrant': 'upper_right'},
+            {'number': 'E', 'name': 'Upper Right Primary Central Incisor', 'quadrant': 'upper_right'},
+            
+            # Upper Left
+            {'number': 'F', 'name': 'Upper Left Primary Central Incisor', 'quadrant': 'upper_left'},
+            {'number': 'G', 'name': 'Upper Left Primary Lateral Incisor', 'quadrant': 'upper_left'},
+            {'number': 'H', 'name': 'Upper Left Primary Canine', 'quadrant': 'upper_left'},
+            {'number': 'I', 'name': 'Upper Left Primary First Molar', 'quadrant': 'upper_left'},
+            {'number': 'J', 'name': 'Upper Left Primary Second Molar', 'quadrant': 'upper_left'},
+            
+            # Lower Left
+            {'number': 'K', 'name': 'Lower Left Primary Second Molar', 'quadrant': 'lower_left'},
+            {'number': 'L', 'name': 'Lower Left Primary First Molar', 'quadrant': 'lower_left'},
+            {'number': 'M', 'name': 'Lower Left Primary Canine', 'quadrant': 'lower_left'},
+            {'number': 'N', 'name': 'Lower Left Primary Lateral Incisor', 'quadrant': 'lower_left'},
+            {'number': 'O', 'name': 'Lower Left Primary Central Incisor', 'quadrant': 'lower_left'},
+            
+            # Lower Right
+            {'number': 'P', 'name': 'Lower Right Primary Central Incisor', 'quadrant': 'lower_right'},
+            {'number': 'Q', 'name': 'Lower Right Primary Lateral Incisor', 'quadrant': 'lower_right'},
+            {'number': 'R', 'name': 'Lower Right Primary Canine', 'quadrant': 'lower_right'},
+            {'number': 'S', 'name': 'Lower Right Primary First Molar', 'quadrant': 'lower_right'},
+            {'number': 'T', 'name': 'Lower Right Primary Second Molar', 'quadrant': 'lower_right'},
+        ]
+        
+        # Create permanent teeth records
+        for tooth_data in permanent_teeth_data:
             DentalChartTooth.objects.create(
                 patient=instance,
                 dentition_type='permanent',
+                **tooth_data
+            )
+        
+        # Create primary teeth records
+        for tooth_data in primary_teeth_data:
+            DentalChartTooth.objects.create(
+                patient=instance,
+                dentition_type='primary',
                 **tooth_data
             )
