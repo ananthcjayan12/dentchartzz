@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from api.models.dental_chart import (
     DentalCondition, DentalProcedure, DentalChartTooth, 
-    DentalChartCondition, DentalChartProcedure, ChartHistory
+    DentalChartCondition, DentalChartProcedure, ChartHistory, ProcedureNote
 )
 from api.models import Patient
 
@@ -24,21 +24,35 @@ class DentalChartConditionSerializer(serializers.ModelSerializer):
     class Meta:
         model = DentalChartCondition
         fields = [
-            'id', 'condition_id', 'condition_name', 'condition_code', 'surface', 'notes', 
+            'id', 'condition_id', 'condition_name', 'condition_code', 'surface', 'description', 
             'severity', 'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
         read_only_fields = ['created_at', 'updated_at', 'created_by', 'updated_by']
+
+class ProcedureNoteSerializer(serializers.ModelSerializer):
+    created_by = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ProcedureNote
+        fields = ['id', 'note', 'appointment_date', 'created_by', 'created_at']
+    
+    def get_created_by(self, obj):
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.username
+        return None
 
 class DentalChartProcedureSerializer(serializers.ModelSerializer):
     procedure_name = serializers.CharField(source='procedure.name', read_only=True)
     procedure_code = serializers.CharField(source='procedure.code', read_only=True)
     performed_by = serializers.CharField(source='performed_by.get_full_name', read_only=True)
+    progress_notes = ProcedureNoteSerializer(source='notes', many=True, read_only=True)
     
     class Meta:
         model = DentalChartProcedure
         fields = [
             'id', 'procedure_id', 'procedure_name', 'procedure_code', 'surface', 
-            'notes', 'date_performed', 'performed_by', 'price', 'status', 'created_at'
+            'description', 'date_performed', 'performed_by', 'price', 'status', 
+            'created_at', 'progress_notes'
         ]
         read_only_fields = ['created_at', 'performed_by']
 
@@ -86,11 +100,16 @@ class DentalChartSerializer(serializers.ModelSerializer):
         return None
 
 class ChartHistorySerializer(serializers.ModelSerializer):
-    user = serializers.CharField(source='user.get_full_name', read_only=True)
+    action_display = serializers.CharField(source='get_action_display')
+    user_name = serializers.SerializerMethodField()
     
     class Meta:
         model = ChartHistory
-        fields = ['id', 'date', 'user', 'action', 'tooth_number', 'details']
+        fields = ['id', 'date', 'action', 'action_display', 'tooth_number', 
+                 'category', 'details', 'user_name']
+    
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
 
 class DentalChartViewSerializer(serializers.Serializer):
     id = serializers.IntegerField()

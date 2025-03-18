@@ -64,7 +64,7 @@ class DentalChartTooth(models.Model):
         return f"Tooth {self.number} ({self.name}) - {self.patient.name} ({self.get_dentition_type_display()})"
 
 class DentalChartCondition(models.Model):
-    """Model for conditions applied to a specific tooth in the dental chart."""
+    """Model for conditions on a specific tooth in the dental chart."""
     SEVERITY_CHOICES = [
         ('mild', 'Mild'),
         ('moderate', 'Moderate'),
@@ -73,8 +73,8 @@ class DentalChartCondition(models.Model):
     
     tooth = models.ForeignKey(DentalChartTooth, on_delete=models.CASCADE, related_name='conditions')
     condition = models.ForeignKey(DentalCondition, on_delete=models.CASCADE)
-    surface = models.CharField(max_length=50, blank=True)  # e.g., "occlusal,buccal"
-    notes = models.TextField(blank=True)
+    surface = models.CharField(max_length=50, blank=True)
+    description = models.TextField(blank=True)
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='moderate')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -96,7 +96,7 @@ class DentalChartProcedure(models.Model):
     tooth = models.ForeignKey(DentalChartTooth, on_delete=models.CASCADE, related_name='procedures')
     procedure = models.ForeignKey(DentalProcedure, on_delete=models.CASCADE)
     surface = models.CharField(max_length=50, blank=True)
-    notes = models.TextField(blank=True)
+    description = models.TextField(blank=True)
     date_performed = models.DateTimeField(null=True, blank=True)
     performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='performed_dental_chart_procedures')
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -106,15 +106,44 @@ class DentalChartProcedure(models.Model):
     def __str__(self):
         return f"{self.procedure.name} on Tooth {self.tooth.number}"
 
+class ProcedureNote(models.Model):
+    """Model for procedure progress notes."""
+    procedure = models.ForeignKey('DentalChartProcedure', on_delete=models.CASCADE, related_name='notes')
+    note = models.TextField()
+    appointment_date = models.DateTimeField()
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-appointment_date']
+
 class ChartHistory(models.Model):
-    """Model for tracking changes to dental charts."""
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    date = models.DateTimeField(auto_now_add=True)
-    action = models.CharField(max_length=50)  # e.g., 'add_condition', 'update_condition', etc.
-    tooth_number = models.CharField(max_length=10)  # Should store values as strings
-    details = models.JSONField()  # Store additional details about the action
+    ACTIONS = [
+        ('add_condition', 'Add Condition'),
+        ('update_condition', 'Update Condition'),
+        ('remove_condition', 'Remove Condition'),
+        ('add_procedure', 'Add Procedure'),
+        ('update_procedure', 'Update Procedure'),
+        ('remove_procedure', 'Remove Procedure'),
+        ('add_procedure_note', 'Add Procedure Note'),
+    ]
     
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    user = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+    date = models.DateTimeField(auto_now_add=True)
+    action = models.CharField(max_length=50, choices=ACTIONS)
+    tooth_number = models.CharField(max_length=10)
+    category = models.CharField(max_length=50, null=True, blank=True)
+    details = models.JSONField()
+
+    class Meta:
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['patient', 'tooth_number']),
+            models.Index(fields=['patient', 'category']),
+            models.Index(fields=['patient', 'date'])
+        ]
+
     def __str__(self):
         return f"{self.action} on Tooth {self.tooth_number} by {self.user.username}"
     

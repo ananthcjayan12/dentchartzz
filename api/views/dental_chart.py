@@ -10,14 +10,14 @@ from django.db import models
 
 from api.models.dental_chart import (
     DentalCondition, DentalProcedure, DentalChartTooth, 
-    DentalChartCondition, DentalChartProcedure, ChartHistory
+    DentalChartCondition, DentalChartProcedure, ChartHistory, ProcedureNote
 )
 from api.models import Patient, Clinic
 from api.serializers.dental_chart import (
     DentalConditionSerializer, DentalProcedureSerializer,
     DentalChartConditionSerializer, DentalChartProcedureSerializer,
     DentalChartSerializer, ChartHistorySerializer, DentalChartToothSerializer,
-    DentalChartViewSerializer
+    DentalChartViewSerializer, ProcedureNoteSerializer
 )
 from api.views.base import ClinicModelViewSet, ClinicViewSetMixin
 
@@ -378,13 +378,41 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 DentalChartTooth.objects.create(patient=patient, **tooth_data)
     
     @action(detail=True, methods=['get'], url_path='history')
-    def history(self, request, clinic_id=None, patient_id=None):
-        """Get the history of changes to a patient's dental chart."""
+    def get_chart_history(self, request, clinic_id=None, patient_id=None):
+        """Get dental chart history with filtering options."""
         clinic = self.get_clinic_from_url()
         patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
         
-        # Get chart history for this patient
-        history = ChartHistory.objects.filter(patient=patient).order_by('-date')
+        # Filter parameters
+        tooth_number = request.query_params.get('tooth_number')
+        category = request.query_params.get('category')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        history = ChartHistory.objects.filter(patient=patient)
+        
+        if tooth_number:
+            history = history.filter(tooth_number=tooth_number)
+        if category:
+            history = history.filter(category=category)
+        if start_date:
+            try:
+                start = timezone.make_aware(datetime.strptime(start_date, '%Y-%m-%d'))
+                history = history.filter(date__gte=start)
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid start_date format. Use YYYY-MM-DD.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        if end_date:
+            try:
+                end = timezone.make_aware(datetime.strptime(end_date, '%Y-%m-%d'))
+                history = history.filter(date__lte=end)
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid end_date format. Use YYYY-MM-DD.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         # Paginate results
         page = self.paginate_queryset(history)
@@ -438,7 +466,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             tooth=tooth,
             condition=condition,
             surface=request.data.get('surface', ''),
-            notes=request.data.get('notes', ''),
+            description=request.data.get('notes', ''),
             severity=request.data.get('severity', 'moderate'),
             created_by=request.user,
             updated_by=request.user
@@ -477,7 +505,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         if 'surface' in request.data:
             tooth_condition.surface = request.data['surface']
         if 'notes' in request.data:
-            tooth_condition.notes = request.data['notes']
+            tooth_condition.description = request.data['notes']
         if 'severity' in request.data:
             tooth_condition.severity = request.data['severity']
         
@@ -576,7 +604,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             tooth=tooth,
             procedure=procedure,
             surface=request.data.get('surface', ''),
-            notes=request.data.get('notes', ''),
+            description=request.data.get('notes', ''),
             date_performed=date_performed,
             performed_by=request.user if date_performed else None,
             price=request.data.get('price', procedure.default_price),
@@ -617,7 +645,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         if 'surface' in request.data:
             tooth_procedure.surface = request.data['surface']
         if 'notes' in request.data:
-            tooth_procedure.notes = request.data['notes']
+            tooth_procedure.description = request.data['notes']
         if 'price' in request.data:
             tooth_procedure.price = request.data['price']
         if 'status' in request.data:
@@ -689,4 +717,49 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             }
         )
         
-        return Response(status=status.HTTP_204_NO_CONTENT) 
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=True, methods=['post'], 
+            url_path='tooth/(?P<tooth_number>[A-Za-z0-9]+)/procedure/(?P<procedure_id>[0-9]+)/notes')
+    def add_procedure_note(self, request, clinic_id=None, patient_id=None, 
+                          tooth_number=None, procedure_id=None):
+        """Add a progress note to a procedure."""
+        clinic = self.get_clinic_from_url()
+        patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
+        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=str(tooth_number))
+        procedure = get_object_or_404(DentalChartProcedure, id=procedure_id, tooth=tooth)
+        
+        try:
+            appointment_date = timezone.make_aware(
+                datetime.strptime(request.data['appointment_date'], '%Y-%m-%d %H:%M')
+            )
+        except ValueError:
+            return Response(
+                {'error': 'Invalid date format. Use YYYY-MM-DD HH:MM.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        note = ProcedureNote.objects.create(
+            procedure=procedure,
+            note=request.data['note'],
+            appointment_date=appointment_date,
+            created_by=request.user
+        )
+        
+        # Create history entry
+        ChartHistory.objects.create(
+            patient=patient,
+            user=request.user,
+            action='add_procedure_note',
+            tooth_number=str(tooth_number),
+            category='procedures',
+            details={
+                'procedure_name': procedure.procedure.name,
+                'note': note.note,
+                'appointment_date': appointment_date.strftime('%Y-%m-%d %H:%M'),
+                'status': procedure.status
+            }
+        )
+        
+        return Response(ProcedureNoteSerializer(note).data, 
+                       status=status.HTTP_201_CREATED) 

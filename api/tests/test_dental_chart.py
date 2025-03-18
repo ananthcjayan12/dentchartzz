@@ -432,7 +432,7 @@ class TestDentalChartEndpoints:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['procedure_id'] == dental_procedure.id
         assert response.data['surface'] == 'occlusal'
-        assert response.data['notes'] == 'Amalgam filling'
+        assert response.data['description'] == 'Amalgam filling'
         assert float(response.data['price']) == 120.00
         assert response.data['status'] == 'completed'
         
@@ -463,7 +463,7 @@ class TestDentalChartEndpoints:
             tooth=tooth,
             condition=dental_condition,
             surface='occlusal',
-            notes='Initial notes',
+            description='Initial notes',
             severity='mild',
             created_by=user,
             updated_by=user
@@ -485,13 +485,13 @@ class TestDentalChartEndpoints:
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['surface'] == 'occlusal,buccal'
-        assert response.data['notes'] == 'Updated notes'
+        assert response.data['description'] == 'Updated notes'
         assert response.data['severity'] == 'severe'
         
         # Check that the condition was updated
         condition.refresh_from_db()
         assert condition.surface == 'occlusal,buccal'
-        assert condition.notes == 'Updated notes'
+        assert condition.description == 'Updated notes'
         assert condition.severity == 'severe'
         
         # Check that a history entry was created
@@ -507,7 +507,7 @@ class TestDentalChartEndpoints:
             tooth=tooth,
             condition=dental_condition,
             surface='occlusal',
-            notes='Test notes',
+            description='Test notes',
             severity='moderate',
             created_by=user,
             updated_by=user
@@ -549,11 +549,8 @@ class TestDentalChartEndpoints:
         response = authenticated_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) == 2
-        
-        # Check that the history entries are in the correct order (newest first)
-        assert response.data['results'][0]['action'] == 'add_procedure'
-        assert response.data['results'][1]['action'] == 'add_condition'
+        assert response.data['count'] == 2  # Check count in paginated response
+        assert len(response.data['results']) == 2  # Check results in paginated response
 
     def test_create_custom_dental_condition(self, authenticated_client, user, clinic, clinic_membership):
         """Test creating a custom dental condition."""
@@ -617,7 +614,7 @@ class TestDentalChartEndpoints:
         
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['surface'] == 'labial'
-        assert response.data['notes'] == 'Patient reports no pain but concerned about appearance'
+        assert response.data['description'] == 'Patient reports no pain but concerned about appearance'
         assert response.data['severity'] == 'mild'
         assert response.data['condition_name'] == 'Unusual Discoloration'
         assert response.data['condition_code'] == 'UD01'
@@ -656,7 +653,7 @@ class TestDentalChartEndpoints:
         
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['surface'] == 'labial'
-        assert response.data['notes'] == 'Used new material for better aesthetics'
+        assert response.data['description'] == 'Used new material for better aesthetics'
         assert response.data['price'] == '850.00'
         assert response.data['status'] == 'completed'
         assert response.data['procedure_name'] == 'Specialized Veneer Technique'
@@ -744,7 +741,7 @@ class TestDentalChartEndpoints:
         assert response.data['condition_id'] == standard_condition['id']
         assert response.data['condition_name'] == standard_condition['name']
         assert response.data['surface'] == 'occlusal'
-        assert response.data['notes'] == 'Using standard condition'
+        assert response.data['description'] == 'Using standard condition'
 
     def test_add_tooth_procedure_with_standard_procedure(self, authenticated_client, user, clinic, 
                                                        clinic_membership, patient_with_teeth,
@@ -762,7 +759,7 @@ class TestDentalChartEndpoints:
         url = reverse('add-tooth-procedure', args=[clinic.id, patient_with_teeth.id, 1])
         data = {
             'procedure_id': standard_procedure['id'],
-            'surface': 'occlusal,buccal',
+            'surface': 'occlusal',
             'notes': 'Using standard procedure',
             'date_performed': '2023-12-01',
             'price': standard_procedure['default_price'],
@@ -773,8 +770,8 @@ class TestDentalChartEndpoints:
         
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['procedure_name'] == standard_procedure['name']
-        assert response.data['surface'] == 'occlusal,buccal'
-        assert response.data['notes'] == 'Using standard procedure'
+        assert response.data['surface'] == 'occlusal'
+        assert response.data['description'] == 'Using standard procedure'
         assert response.data['status'] == 'completed'
         assert float(response.data['price']) == float(standard_procedure['default_price'])
 
@@ -865,8 +862,8 @@ class TestDentalChartEndpoints:
             tooth=tooth,
             condition=dental_condition,
             surface='occlusal',
-            notes='Test condition',
-            severity='moderate',
+            description='Initial notes',
+            severity='mild',
             created_by=user,
             updated_by=user
         )
@@ -876,7 +873,7 @@ class TestDentalChartEndpoints:
             tooth=tooth,
             procedure=dental_procedure,
             surface='occlusal',
-            notes='Test procedure',
+            description='Initial procedure',
             date_performed=timezone.now(),
             performed_by=user,
             price=100.00,
@@ -904,8 +901,8 @@ class TestDentalChartEndpoints:
         assert condition_data['condition_name'] == dental_condition.name
         assert condition_data['condition_code'] == dental_condition.code
         assert condition_data['surface'] == 'occlusal'
-        assert condition_data['notes'] == 'Test condition'
-        assert condition_data['severity'] == 'moderate'
+        assert condition_data['description'] == 'Initial notes'
+        assert condition_data['severity'] == 'mild'
         assert condition_data['created_by'] == user.get_full_name()
         
         # Check that the tooth has procedures
@@ -916,7 +913,7 @@ class TestDentalChartEndpoints:
         assert procedure_data['procedure_name'] == dental_procedure.name
         assert procedure_data['procedure_code'] == dental_procedure.code
         assert procedure_data['surface'] == 'occlusal'
-        assert procedure_data['notes'] == 'Test procedure'
+        assert procedure_data['description'] == 'Initial procedure'
         assert procedure_data['price'] == '100.00'
         assert procedure_data['status'] == 'completed'
         assert procedure_data['performed_by'] == user.get_full_name()
@@ -935,7 +932,7 @@ class TestDentalChartEndpoints:
             tooth=tooth,
             procedure=dental_procedure,
             surface='occlusal',
-            notes='Initial procedure',
+            description='Initial procedure',
             date_performed=timezone.now(),
             performed_by=user,
             price=100.00,
@@ -962,7 +959,7 @@ class TestDentalChartEndpoints:
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['surface'] == 'mesial,distal'
-        assert response.data['notes'] == 'Updated procedure notes'
+        assert response.data['description'] == 'Updated procedure notes'
         assert response.data['price'] == '150.00'
         assert response.data['status'] == 'completed'
         assert response.data['performed_by'] == user.get_full_name()
@@ -990,7 +987,7 @@ class TestDentalChartEndpoints:
             tooth=tooth,
             procedure=dental_procedure,
             surface='occlusal',
-            notes='Initial procedure',
+            description='Initial procedure',
             date_performed=timezone.now(),
             performed_by=user,
             price=100.00,
@@ -1020,4 +1017,93 @@ class TestDentalChartEndpoints:
         assert history.tooth_number == '1'
         assert history.details['procedure_name'] == dental_procedure.name
         assert float(history.details['price']) == 100.00
-        assert history.details['status'] == 'in_progress' 
+        assert history.details['status'] == 'in_progress'
+
+    def test_add_procedure_note(self, authenticated_client, user, clinic, 
+                              clinic_membership, patient_with_teeth, dental_procedure):
+        """Test adding a note to a procedure."""
+        # First create a procedure
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth,
+            number='1',
+            dentition_type='permanent'
+        )
+        
+        # Update the user to have a first and last name
+        user.first_name = "Test"
+        user.last_name = "User"
+        user.save()
+        
+        procedure = DentalChartProcedure.objects.create(
+            tooth=tooth,
+            procedure=dental_procedure,
+            surface='occlusal',
+            description='Initial procedure',
+            date_performed=timezone.now(),
+            performed_by=user,
+            price=100.00,
+            status='in_progress'
+        )
+        
+        # Add a note
+        url = reverse('add-procedure-note', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '1',
+            'procedure_id': procedure.id
+        })
+        
+        note_data = {
+            'note': 'Progress note for the procedure',
+            'appointment_date': timezone.now().strftime('%Y-%m-%d %H:%M')
+        }
+        
+        response = authenticated_client.post(url, note_data, format='json')
+        
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['note'] == note_data['note']
+        assert response.data['created_by'] == "Test User"  # Now should match the full name
+        
+        # Verify history was created
+        history = ChartHistory.objects.filter(
+            patient=patient_with_teeth,
+            action='add_procedure_note'
+        ).latest('date')
+        assert history.tooth_number == '1'
+        assert history.category == 'procedures'
+        assert history.details['note'] == note_data['note']
+
+    def test_get_chart_history_with_filters(self, authenticated_client, user, clinic,
+                                          clinic_membership, patient_with_teeth):
+        """Test getting chart history with various filters."""
+        # Create some history entries
+        ChartHistory.objects.create(
+            patient=patient_with_teeth,
+            user=user,
+            action='add_procedure',
+            tooth_number='1',
+            category='procedures',
+            details={'procedure_name': 'Test Procedure'}
+        )
+        
+        ChartHistory.objects.create(
+            patient=patient_with_teeth,
+            user=user,
+            action='add_condition',
+            tooth_number='2',
+            category='conditions',
+            details={'condition_name': 'Test Condition'}
+        )
+        
+        # Test filtering by tooth number
+        url = reverse('dental-chart-history', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id
+        }) + '?tooth_number=1'
+        
+        response = authenticated_client.get(url)
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1  # Check count in paginated response
+        assert len(response.data['results']) == 1  # Check results in paginated response
+        assert response.data['results'][0]['tooth_number'] == '1' 

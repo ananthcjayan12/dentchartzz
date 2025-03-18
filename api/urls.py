@@ -59,7 +59,7 @@ urlpatterns = [
          dental_chart.DentalChartViewSet.as_view({'get': 'retrieve'}), 
          name='dental-chart'),
     path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/history/', 
-         dental_chart.DentalChartViewSet.as_view({'get': 'history'}), 
+         dental_chart.DentalChartViewSet.as_view({'get': 'get_chart_history'}),
          name='dental-chart-history'),
     path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/tooth/<str:tooth_number>/condition/', 
          dental_chart.DentalChartViewSet.as_view({'post': 'add_tooth_condition'}), 
@@ -79,4 +79,7 @@ urlpatterns = [
              'delete': 'delete_tooth_procedure'
          }),
          name='tooth-procedure-detail'),
+    path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/tooth/<str:tooth_number>/procedure/<int:procedure_id>/notes/',
+         dental_chart.DentalChartViewSet.as_view({'post': 'add_procedure_note'}),
+         name='add-procedure-note'),
 ] 
