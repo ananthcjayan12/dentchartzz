@@ -41,24 +41,27 @@ class DentalChartTooth(models.Model):
         ('lower_left', 'Lower Left'),
     ]
     
-    TYPE_CHOICES = [
-        ('incisor', 'Incisor'),
-        ('canine', 'Canine'),
-        ('premolar', 'Premolar'),
-        ('molar', 'Molar'),
+    DENTITION_CHOICES = [
+        ('permanent', 'Permanent'),
+        ('primary', 'Primary'),
     ]
     
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='dental_chart_teeth')
-    number = models.IntegerField()  # Standard tooth numbering (1-32 for adults)
+    number = models.CharField(max_length=10)  # Changed to support A-T notation
+    universal_number = models.IntegerField(null=True, blank=True)  # Made nullable for existing records
+    dentition_type = models.CharField(
+        max_length=10,
+        choices=DENTITION_CHOICES,
+        default='permanent'
+    )
     name = models.CharField(max_length=100)
     quadrant = models.CharField(max_length=20, choices=QUADRANT_CHOICES)
-    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     
     class Meta:
-        unique_together = ('patient', 'number')
+        unique_together = ('patient', 'number', 'dentition_type')
     
     def __str__(self):
-        return f"Tooth {self.number} ({self.name}) - {self.patient.name}"
+        return f"Tooth {self.number} ({self.name}) - {self.patient.name} ({self.get_dentition_type_display()})"
 
 class DentalChartCondition(models.Model):
     """Model for conditions applied to a specific tooth in the dental chart."""
@@ -104,25 +107,18 @@ class DentalChartProcedure(models.Model):
         return f"{self.procedure.name} on Tooth {self.tooth.number}"
 
 class ChartHistory(models.Model):
-    """Model for tracking changes to a patient's dental chart."""
-    ACTION_CHOICES = [
-        ('add_condition', 'Add Condition'),
-        ('update_condition', 'Update Condition'),
-        ('remove_condition', 'Remove Condition'),
-        ('add_procedure', 'Add Procedure'),
-        ('update_procedure', 'Update Procedure'),
-        ('cancel_procedure', 'Cancel Procedure'),
-    ]
-    
-    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='chart_history')
-    date = models.DateTimeField(auto_now_add=True)
+    """Model for tracking changes to dental charts."""
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
-    tooth_number = models.IntegerField()
-    details = models.JSONField()  # Store action-specific details
-    
-    class Meta:
-        ordering = ['-date']
+    date = models.DateTimeField(auto_now_add=True)
+    action = models.CharField(max_length=50)  # e.g., 'add_condition', 'update_condition', etc.
+    tooth_number = models.CharField(max_length=10)  # Should store values as strings
+    details = models.JSONField()  # Store additional details about the action
     
     def __str__(self):
-        return f"{self.action} on Tooth {self.tooth_number} by {self.user.get_full_name() or self.user.username}" 
+        return f"{self.action} on Tooth {self.tooth_number} by {self.user.username}"
+    
+    def save(self, *args, **kwargs):
+        # Ensure that the tooth_number is always stored as a string
+        self.tooth_number = str(self.tooth_number)
+        super().save(*args, **kwargs) 

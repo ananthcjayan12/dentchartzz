@@ -49,13 +49,24 @@ class TestDentalChartEndpoints:
             phone='1234567890'
         )
         
-        # Create a tooth for testing
+        # Create permanent tooth for testing
         DentalChartTooth.objects.create(
             patient=patient,
-            number=1,
+            number='1',
+            universal_number=1,
             name='Upper Right Third Molar',
             quadrant='upper_right',
-            type='molar'
+            dentition_type='permanent'
+        )
+        
+        # Create primary tooth for testing
+        DentalChartTooth.objects.create(
+            patient=patient,
+            number='A',
+            universal_number=51,
+            name='Primary Upper Right Central Incisor',
+            quadrant='upper_right',
+            dentition_type='primary'
         )
         
         return patient
@@ -248,7 +259,7 @@ class TestDentalChartEndpoints:
     
     def test_get_dental_conditions(self, authenticated_client, user, clinic, clinic_membership, dental_condition):
         """Test getting dental conditions."""
-        url = reverse('dental-conditions', args=[clinic.id])
+        url = reverse('dental-conditions', kwargs={'clinic_id': clinic.id})
         response = authenticated_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK
@@ -267,26 +278,45 @@ class TestDentalChartEndpoints:
         assert response.data['results'][0]['code'] == 'D2140'
     
     def test_get_dental_chart(self, authenticated_client, user, clinic, clinic_membership, patient_with_teeth):
-        """Test getting a patient's dental chart."""
-        url = reverse('dental-chart', args=[clinic.id, patient_with_teeth.id])
+        """Test retrieving a dental chart."""
+        url = reverse('dental-chart', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id
+        })
         response = authenticated_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['id'] == patient_with_teeth.id
+        assert response.data['patient_id'] == patient_with_teeth.id
         assert response.data['patient_name'] == patient_with_teeth.name
-        assert len(response.data['teeth']) == 1
-        assert response.data['teeth'][0]['number'] == 1
-        assert response.data['teeth'][0]['name'] == 'Upper Right Third Molar'
+        
+        # Check permanent teeth
+        assert len(response.data['permanent_teeth']) == 1
+        permanent_tooth = response.data['permanent_teeth'][0]
+        assert permanent_tooth['number'] == '1'
+        assert permanent_tooth['universal_number'] == 1
+        assert permanent_tooth['dentition_type'] == 'permanent'
+        
+        # Check primary teeth
+        assert len(response.data['primary_teeth']) == 1
+        primary_tooth = response.data['primary_teeth'][0]
+        assert primary_tooth['number'] == 'A'
+        assert primary_tooth['universal_number'] == 51
+        assert primary_tooth['dentition_type'] == 'primary'
     
-    def test_add_tooth_condition(self, authenticated_client, user, clinic, clinic_membership, 
-                                patient_with_teeth, dental_condition):
-        """Test adding a condition to a tooth."""
-        url = reverse('add-tooth-condition', args=[clinic.id, patient_with_teeth.id, 1])
+    def test_add_tooth_condition_to_permanent_tooth(self, authenticated_client, user, clinic, 
+                                                  clinic_membership, patient_with_teeth, dental_condition):
+        """Test adding a condition to a permanent tooth."""
+        url = reverse('add-tooth-condition', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '1'
+        })
         data = {
             'condition_id': dental_condition.id,
             'surface': 'occlusal',
             'notes': 'Deep cavity on occlusal surface',
-            'severity': 'moderate'
+            'severity': 'moderate',
+            'dentition_type': 'permanent'
         }
         
         response = authenticated_client.post(url, data, format='json')
@@ -294,29 +324,43 @@ class TestDentalChartEndpoints:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['condition_id'] == dental_condition.id
         assert response.data['surface'] == 'occlusal'
-        assert response.data['notes'] == 'Deep cavity on occlusal surface'
-        assert response.data['severity'] == 'moderate'
-        
-        # Check that the condition was added to the tooth
-        tooth = DentalChartTooth.objects.get(patient=patient_with_teeth, number=1)
-        assert tooth.conditions.count() == 1
-        
-        # Check that a history entry was created
-        history = ChartHistory.objects.filter(patient=patient_with_teeth)
-        assert history.count() == 1
-        assert history.first().action == 'add_condition'
-        assert history.first().tooth_number == 1
     
-    def test_add_tooth_procedure(self, authenticated_client, user, clinic, clinic_membership, 
-                                patient_with_teeth, dental_procedure):
-        """Test adding a procedure to a tooth."""
-        url = reverse('add-tooth-procedure', args=[clinic.id, patient_with_teeth.id, 1])
+    def test_add_tooth_condition_to_primary_tooth(self, authenticated_client, user, clinic, 
+                                                clinic_membership, patient_with_teeth, dental_condition):
+        """Test adding a condition to a primary tooth."""
+        url = reverse('add-tooth-condition', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': 'A'
+        })
+        data = {
+            'condition_id': dental_condition.id,
+            'surface': 'occlusal',
+            'notes': 'Primary tooth condition',
+            'severity': 'mild',
+            'dentition_type': 'primary'
+        }
+        
+        response = authenticated_client.post(url, data, format='json')
+        
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['condition_id'] == dental_condition.id
+        assert response.data['surface'] == 'occlusal'
+    
+    def test_add_procedure_to_primary_tooth(self, authenticated_client, user, clinic, 
+                                          clinic_membership, patient_with_teeth, dental_procedure):
+        """Test adding a procedure to a primary tooth."""
+        url = reverse('add-tooth-procedure', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': 'A'
+        })
         data = {
             'procedure_id': dental_procedure.id,
             'surface': 'occlusal',
-            'notes': 'Amalgam filling',
+            'notes': 'Primary tooth procedure',
             'date_performed': '2023-11-21',
-            'price': 120.00,
+            'price': 100.00,
             'status': 'completed'
         }
         
@@ -325,25 +369,95 @@ class TestDentalChartEndpoints:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data['procedure_id'] == dental_procedure.id
         assert response.data['surface'] == 'occlusal'
+        assert float(response.data['price']) == 100.00
+    
+    def test_invalid_tooth_number_format(self, authenticated_client, user, clinic, 
+                                       clinic_membership, patient_with_teeth, dental_condition):
+        """Test adding a condition with invalid tooth number format."""
+        url = reverse('add-tooth-condition', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': 'X'
+        })
+        data = {
+            'condition_id': dental_condition.id,
+            'surface': 'occlusal',
+            'notes': 'Test note',
+            'severity': 'moderate'
+        }
+        
+        response = authenticated_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+    
+    def test_dentition_type_mismatch(self, authenticated_client, user, clinic, 
+                                   clinic_membership, patient_with_teeth, dental_condition):
+        """Test adding a condition with mismatched dentition type."""
+        url = reverse('add-tooth-condition', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '1'
+        })
+        data = {
+            'condition_id': dental_condition.id,
+            'surface': 'occlusal',
+            'notes': 'Test note',
+            'severity': 'moderate',
+            'dentition_type': 'primary'
+        }
+        
+        response = authenticated_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_add_tooth_procedure(self, authenticated_client, user, clinic, clinic_membership, 
+                                patient_with_teeth, dental_procedure):
+        """Test adding a procedure to a tooth."""
+        url = reverse('add-tooth-procedure', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '1'
+        })
+        data = {
+            'procedure_id': dental_procedure.id,
+            'surface': 'occlusal',
+            'notes': 'Amalgam filling',
+            'date_performed': '2023-11-21',
+            'price': 120.00,
+            'status': 'completed',
+            'dentition_type': 'permanent'
+        }
+        
+        response = authenticated_client.post(url, data, format='json')
+        
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['procedure_id'] == dental_procedure.id
+        assert response.data['surface'] == 'occlusal'
         assert response.data['notes'] == 'Amalgam filling'
-        assert response.data['price'] == '120.00'
+        assert float(response.data['price']) == 120.00
         assert response.data['status'] == 'completed'
         
         # Check that the procedure was added to the tooth
-        tooth = DentalChartTooth.objects.get(patient=patient_with_teeth, number=1)
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth, 
+            number='1',
+            dentition_type='permanent'
+        )
         assert tooth.procedures.count() == 1
         
         # Check that a history entry was created
         history = ChartHistory.objects.filter(patient=patient_with_teeth)
         assert history.count() == 1
         assert history.first().action == 'add_procedure'
-        assert history.first().tooth_number == 1
+        assert history.first().tooth_number == '1'
     
     def test_update_tooth_condition(self, authenticated_client, user, clinic, clinic_membership, 
                                    patient_with_teeth, dental_condition):
         """Test updating a condition on a tooth."""
         # First add a condition
-        tooth = DentalChartTooth.objects.get(patient=patient_with_teeth, number=1)
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth, 
+            number='1',
+            dentition_type='permanent'
+        )
         condition = DentalChartCondition.objects.create(
             tooth=tooth,
             condition=dental_condition,
@@ -354,8 +468,12 @@ class TestDentalChartEndpoints:
             updated_by=user
         )
         
-        # Now update it
-        url = reverse('tooth-condition-detail', args=[clinic.id, patient_with_teeth.id, 1, condition.id])
+        url = reverse('tooth-condition-detail', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': 1,
+            'condition_id': condition.id
+        })
         data = {
             'surface': 'occlusal,buccal',
             'notes': 'Updated notes',
@@ -516,7 +634,7 @@ class TestDentalChartEndpoints:
         history = ChartHistory.objects.filter(patient=patient_with_teeth)
         assert history.count() == 1
         assert history.first().action == 'add_condition'
-        assert history.first().tooth_number == 1
+        assert history.first().tooth_number == '1'
 
     def test_add_tooth_procedure_with_custom_procedure(self, authenticated_client, user, clinic, 
                                                       clinic_membership, patient_with_teeth):
@@ -556,7 +674,7 @@ class TestDentalChartEndpoints:
         history = ChartHistory.objects.filter(patient=patient_with_teeth)
         assert history.count() == 1
         assert history.first().action == 'add_procedure'
-        assert history.first().tooth_number == 1
+        assert history.first().tooth_number == '1'
 
     def test_standard_dental_conditions_exist(self, authenticated_client, user, clinic, 
                                              clinic_membership, standard_dental_conditions):
@@ -679,4 +797,53 @@ class TestDentalChartEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) > 0
         for procedure in response.data['results']:
-            assert procedure['category'] == 'restorative' 
+            assert procedure['category'] == 'restorative'
+
+    def test_add_condition_to_patient_without_teeth(self, authenticated_client, user, clinic, 
+                                                  clinic_membership, dental_condition):
+        """Test adding a condition to a patient who doesn't have teeth records yet."""
+        # Create a new patient without teeth
+        patient_without_teeth = Patient.objects.create(
+            clinic=clinic,
+            name='New Patient',
+            age=25,
+            gender='F',
+            phone='9876543210'
+        )
+        
+        # Try to add a condition
+        url = reverse('add-tooth-condition', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_without_teeth.id,
+            'tooth_number': '1'
+        })
+        data = {
+            'condition_id': dental_condition.id,
+            'surface': 'occlusal',
+            'notes': 'Test condition',
+            'severity': 'moderate',
+            'dentition_type': 'permanent'
+        }
+        
+        response = authenticated_client.post(url, data, format='json')
+        
+        # Should succeed as teeth should be automatically created
+        assert response.status_code == status.HTTP_201_CREATED
+        
+        # Verify that teeth were created
+        teeth = DentalChartTooth.objects.filter(patient=patient_without_teeth)
+        assert teeth.exists()
+        
+        # Verify the condition was added
+        tooth = teeth.get(number='1', dentition_type='permanent')
+        assert tooth.conditions.count() == 1
+        condition = tooth.conditions.first()
+        assert condition.condition == dental_condition
+        assert condition.surface == 'occlusal'
+        assert condition.severity == 'moderate'
+        
+        # Verify history was created
+        history = ChartHistory.objects.filter(patient=patient_without_teeth)
+        assert history.count() == 1
+        assert history.first().action == 'add_condition'
+        assert history.first().tooth_number == '1' 

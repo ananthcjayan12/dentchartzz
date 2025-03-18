@@ -16,7 +16,8 @@ from api.models import Patient, Clinic
 from api.serializers.dental_chart import (
     DentalConditionSerializer, DentalProcedureSerializer,
     DentalChartConditionSerializer, DentalChartProcedureSerializer,
-    DentalChartSerializer, ChartHistorySerializer, DentalChartToothSerializer
+    DentalChartSerializer, ChartHistorySerializer, DentalChartToothSerializer,
+    DentalChartViewSerializer
 )
 from api.views.base import ClinicModelViewSet, ClinicViewSetMixin
 
@@ -104,17 +105,35 @@ class DentalProcedureViewSet(ClinicModelViewSet):
 class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
     """ViewSet for managing dental charts."""
     pagination_class = PageNumberPagination
+    serializer_class = DentalChartViewSerializer
     
-    def retrieve(self, request, clinic_id=None, patient_id=None):
+    def retrieve(self, request, patient_id=None, **kwargs):
         """Get a patient's dental chart."""
         clinic = self.get_clinic_from_url()
         patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
         
-        # Ensure the patient has teeth records
-        self._ensure_patient_has_teeth(patient)
+        # Get all teeth for this patient
+        permanent_teeth = DentalChartTooth.objects.filter(
+            patient=patient,
+            dentition_type='permanent'
+        ).order_by('number')
         
-        serializer = DentalChartSerializer(patient)
-        return Response(serializer.data)
+        primary_teeth = DentalChartTooth.objects.filter(
+            patient=patient,
+            dentition_type='primary'
+        ).order_by('number')
+        
+        # Prepare response data
+        data = {
+            'id': patient.id,
+            'patient_id': patient.id,
+            'patient_name': patient.name,
+            'last_updated': patient.updated_at,
+            'permanent_teeth': DentalChartToothSerializer(permanent_teeth, many=True).data,
+            'primary_teeth': DentalChartToothSerializer(primary_teeth, many=True).data
+        }
+        
+        return Response(data)
     
     def _ensure_patient_has_teeth(self, patient):
         """Create teeth records for the patient if they don't exist."""
@@ -122,46 +141,239 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             # Create standard adult dentition (32 teeth)
             teeth_data = [
                 # Upper right quadrant (teeth 1-8)
-                {'number': 1, 'name': 'Upper Right Third Molar', 'quadrant': 'upper_right', 'type': 'molar'},
-                {'number': 2, 'name': 'Upper Right Second Molar', 'quadrant': 'upper_right', 'type': 'molar'},
-                {'number': 3, 'name': 'Upper Right First Molar', 'quadrant': 'upper_right', 'type': 'molar'},
-                {'number': 4, 'name': 'Upper Right Second Premolar', 'quadrant': 'upper_right', 'type': 'premolar'},
-                {'number': 5, 'name': 'Upper Right First Premolar', 'quadrant': 'upper_right', 'type': 'premolar'},
-                {'number': 6, 'name': 'Upper Right Canine', 'quadrant': 'upper_right', 'type': 'canine'},
-                {'number': 7, 'name': 'Upper Right Lateral Incisor', 'quadrant': 'upper_right', 'type': 'incisor'},
-                {'number': 8, 'name': 'Upper Right Central Incisor', 'quadrant': 'upper_right', 'type': 'incisor'},
+                {
+                    'number': '1',
+                    'universal_number': 1,
+                    'name': 'Upper Right Third Molar',
+                    'quadrant': 'upper_right',
+                    'dentition_type': 'permanent'
+                },
+                {
+                    'number': '2',
+                    'universal_number': 2,
+                    'name': 'Upper Right Second Molar',
+                    'quadrant': 'upper_right',
+                    'dentition_type': 'permanent'
+                },
+                {
+                    'number': '3',
+                    'universal_number': 3,
+                    'name': 'Upper Right First Molar',
+                    'quadrant': 'upper_right',
+                    'dentition_type': 'permanent'
+                },
+                {
+                    'number': '4',
+                    'universal_number': 4,
+                    'name': 'Upper Right Second Premolar',
+                    'quadrant': 'upper_right',
+                    'dentition_type': 'premolar'
+                },
+                {
+                    'number': '5',
+                    'universal_number': 5,
+                    'name': 'Upper Right First Premolar',
+                    'quadrant': 'upper_right',
+                    'dentition_type': 'premolar'
+                },
+                {
+                    'number': '6',
+                    'universal_number': 6,
+                    'name': 'Upper Right Canine',
+                    'quadrant': 'upper_right',
+                    'dentition_type': 'canine'
+                },
+                {
+                    'number': '7',
+                    'universal_number': 7,
+                    'name': 'Upper Right Lateral Incisor',
+                    'quadrant': 'upper_right',
+                    'dentition_type': 'incisor'
+                },
+                {
+                    'number': '8',
+                    'universal_number': 8,
+                    'name': 'Upper Right Central Incisor',
+                    'quadrant': 'upper_right',
+                    'dentition_type': 'incisor'
+                },
                 
                 # Upper left quadrant (teeth 9-16)
-                {'number': 9, 'name': 'Upper Left Central Incisor', 'quadrant': 'upper_left', 'type': 'incisor'},
-                {'number': 10, 'name': 'Upper Left Lateral Incisor', 'quadrant': 'upper_left', 'type': 'incisor'},
-                {'number': 11, 'name': 'Upper Left Canine', 'quadrant': 'upper_left', 'type': 'canine'},
-                {'number': 12, 'name': 'Upper Left First Premolar', 'quadrant': 'upper_left', 'type': 'premolar'},
-                {'number': 13, 'name': 'Upper Left Second Premolar', 'quadrant': 'upper_left', 'type': 'premolar'},
-                {'number': 14, 'name': 'Upper Left First Molar', 'quadrant': 'upper_left', 'type': 'molar'},
-                {'number': 15, 'name': 'Upper Left Second Molar', 'quadrant': 'upper_left', 'type': 'molar'},
-                {'number': 16, 'name': 'Upper Left Third Molar', 'quadrant': 'upper_left', 'type': 'molar'},
+                {
+                    'number': '9',
+                    'universal_number': 9,
+                    'name': 'Upper Left Central Incisor',
+                    'quadrant': 'upper_left',
+                    'dentition_type': 'incisor'
+                },
+                {
+                    'number': '10',
+                    'universal_number': 10,
+                    'name': 'Upper Left Lateral Incisor',
+                    'quadrant': 'upper_left',
+                    'dentition_type': 'incisor'
+                },
+                {
+                    'number': '11',
+                    'universal_number': 11,
+                    'name': 'Upper Left Canine',
+                    'quadrant': 'upper_left',
+                    'dentition_type': 'canine'
+                },
+                {
+                    'number': '12',
+                    'universal_number': 12,
+                    'name': 'Upper Left First Premolar',
+                    'quadrant': 'upper_left',
+                    'dentition_type': 'premolar'
+                },
+                {
+                    'number': '13',
+                    'universal_number': 13,
+                    'name': 'Upper Left Second Premolar',
+                    'quadrant': 'upper_left',
+                    'dentition_type': 'premolar'
+                },
+                {
+                    'number': '14',
+                    'universal_number': 14,
+                    'name': 'Upper Left First Molar',
+                    'quadrant': 'upper_left',
+                    'dentition_type': 'molar'
+                },
+                {
+                    'number': '15',
+                    'universal_number': 15,
+                    'name': 'Upper Left Second Molar',
+                    'quadrant': 'upper_left',
+                    'dentition_type': 'molar'
+                },
+                {
+                    'number': '16',
+                    'universal_number': 16,
+                    'name': 'Upper Left Third Molar',
+                    'quadrant': 'upper_left',
+                    'dentition_type': 'molar'
+                },
                 
                 # Lower left quadrant (teeth 17-24)
-                {'number': 17, 'name': 'Lower Left Third Molar', 'quadrant': 'lower_left', 'type': 'molar'},
-                {'number': 18, 'name': 'Lower Left Second Molar', 'quadrant': 'lower_left', 'type': 'molar'},
-                {'number': 19, 'name': 'Lower Left First Molar', 'quadrant': 'lower_left', 'type': 'molar'},
-                {'number': 20, 'name': 'Lower Left Second Premolar', 'quadrant': 'lower_left', 'type': 'premolar'},
-                {'number': 21, 'name': 'Lower Left First Premolar', 'quadrant': 'lower_left', 'type': 'premolar'},
-                {'number': 22, 'name': 'Lower Left Canine', 'quadrant': 'lower_left', 'type': 'canine'},
-                {'number': 23, 'name': 'Lower Left Lateral Incisor', 'quadrant': 'lower_left', 'type': 'incisor'},
-                {'number': 24, 'name': 'Lower Left Central Incisor', 'quadrant': 'lower_left', 'type': 'incisor'},
+                {
+                    'number': '17',
+                    'universal_number': 17,
+                    'name': 'Lower Left Third Molar',
+                    'quadrant': 'lower_left',
+                    'dentition_type': 'molar'
+                },
+                {
+                    'number': '18',
+                    'universal_number': 18,
+                    'name': 'Lower Left Second Molar',
+                    'quadrant': 'lower_left',
+                    'dentition_type': 'molar'
+                },
+                {
+                    'number': '19',
+                    'universal_number': 19,
+                    'name': 'Lower Left First Molar',
+                    'quadrant': 'lower_left',
+                    'dentition_type': 'molar'
+                },
+                {
+                    'number': '20',
+                    'universal_number': 20,
+                    'name': 'Lower Left Second Premolar',
+                    'quadrant': 'lower_left',
+                    'dentition_type': 'premolar'
+                },
+                {
+                    'number': '21',
+                    'universal_number': 21,
+                    'name': 'Lower Left First Premolar',
+                    'quadrant': 'lower_left',
+                    'dentition_type': 'premolar'
+                },
+                {
+                    'number': '22',
+                    'universal_number': 22,
+                    'name': 'Lower Left Canine',
+                    'quadrant': 'lower_left',
+                    'dentition_type': 'canine'
+                },
+                {
+                    'number': '23',
+                    'universal_number': 23,
+                    'name': 'Lower Left Lateral Incisor',
+                    'quadrant': 'lower_left',
+                    'dentition_type': 'incisor'
+                },
+                {
+                    'number': '24',
+                    'universal_number': 24,
+                    'name': 'Lower Left Central Incisor',
+                    'quadrant': 'lower_left',
+                    'dentition_type': 'incisor'
+                },
                 
                 # Lower right quadrant (teeth 25-32)
-                {'number': 25, 'name': 'Lower Right Central Incisor', 'quadrant': 'lower_right', 'type': 'incisor'},
-                {'number': 26, 'name': 'Lower Right Lateral Incisor', 'quadrant': 'lower_right', 'type': 'incisor'},
-                {'number': 27, 'name': 'Lower Right Canine', 'quadrant': 'lower_right', 'type': 'canine'},
-                {'number': 28, 'name': 'Lower Right First Premolar', 'quadrant': 'lower_right', 'type': 'premolar'},
-                {'number': 29, 'name': 'Lower Right Second Premolar', 'quadrant': 'lower_right', 'type': 'premolar'},
-                {'number': 30, 'name': 'Lower Right First Molar', 'quadrant': 'lower_right', 'type': 'molar'},
-                {'number': 31, 'name': 'Lower Right Second Molar', 'quadrant': 'lower_right', 'type': 'molar'},
-                {'number': 32, 'name': 'Lower Right Third Molar', 'quadrant': 'lower_right', 'type': 'molar'},
+                {
+                    'number': '25',
+                    'universal_number': 25,
+                    'name': 'Lower Right Central Incisor',
+                    'quadrant': 'lower_right',
+                    'dentition_type': 'incisor'
+                },
+                {
+                    'number': '26',
+                    'universal_number': 26,
+                    'name': 'Lower Right Lateral Incisor',
+                    'quadrant': 'lower_right',
+                    'dentition_type': 'incisor'
+                },
+                {
+                    'number': '27',
+                    'universal_number': 27,
+                    'name': 'Lower Right Canine',
+                    'quadrant': 'lower_right',
+                    'dentition_type': 'canine'
+                },
+                {
+                    'number': '28',
+                    'universal_number': 28,
+                    'name': 'Lower Right First Premolar',
+                    'quadrant': 'lower_right',
+                    'dentition_type': 'premolar'
+                },
+                {
+                    'number': '29',
+                    'universal_number': 29,
+                    'name': 'Lower Right Second Premolar',
+                    'quadrant': 'lower_right',
+                    'dentition_type': 'premolar'
+                },
+                {
+                    'number': '30',
+                    'universal_number': 30,
+                    'name': 'Lower Right First Molar',
+                    'quadrant': 'lower_right',
+                    'dentition_type': 'molar'
+                },
+                {
+                    'number': '31',
+                    'universal_number': 31,
+                    'name': 'Lower Right Second Molar',
+                    'quadrant': 'lower_right',
+                    'dentition_type': 'molar'
+                },
+                {
+                    'number': '32',
+                    'universal_number': 32,
+                    'name': 'Lower Right Third Molar',
+                    'quadrant': 'lower_right',
+                    'dentition_type': 'molar'
+                },
             ]
             
+            # Create teeth records
             for tooth_data in teeth_data:
                 DentalChartTooth.objects.create(patient=patient, **tooth_data)
     
@@ -183,7 +395,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         serializer = ChartHistorySerializer(history, many=True)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['post'], url_path='tooth/(?P<tooth_number>[0-9]+)/condition')
+    @action(detail=True, methods=['post'], url_path='tooth/(?P<tooth_number>[A-Za-z0-9]+)/condition')
     def add_tooth_condition(self, request, clinic_id=None, patient_id=None, tooth_number=None):
         """Add a condition to a tooth."""
         clinic = self.get_clinic_from_url()
@@ -192,7 +404,16 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         # Ensure the patient has teeth records
         self._ensure_patient_has_teeth(patient)
         
-        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=tooth_number)
+        # Get the tooth
+        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=str(tooth_number))
+        
+        # Validate dentition type
+        dentition_type = request.data.get('dentition_type')
+        if dentition_type and dentition_type != tooth.dentition_type:
+            return Response(
+                {'error': f'Dentition type mismatch. Tooth {tooth_number} is {tooth.dentition_type}.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         # Check if we're creating a custom condition or using an existing one
         if 'custom_name' in request.data:
@@ -223,15 +444,16 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             updated_by=request.user
         )
         
-        # Record in history
+        # Create history entry
         ChartHistory.objects.create(
             patient=patient,
             user=request.user,
             action='add_condition',
-            tooth_number=tooth_number,
+            tooth_number=str(tooth_number),
             details={
                 'condition_name': condition.name,
-                'surface': tooth_condition.surface
+                'surface': tooth_condition.surface,
+                'severity': tooth_condition.severity
             }
         )
         
@@ -243,12 +465,12 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         
         return Response(response_data, status=status.HTTP_201_CREATED)
     
-    @action(detail=True, methods=['patch'], url_path='tooth/(?P<tooth_number>[0-9]+)/condition/(?P<condition_id>[0-9]+)')
+    @action(detail=True, methods=['patch'], url_path='tooth/(?P<tooth_number>[A-Za-z0-9]+)/condition/(?P<condition_id>[0-9]+)')
     def update_tooth_condition(self, request, clinic_id=None, patient_id=None, tooth_number=None, condition_id=None):
         """Update a condition on a tooth."""
         clinic = self.get_clinic_from_url()
         patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
-        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=tooth_number)
+        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=str(tooth_number))
         tooth_condition = get_object_or_404(DentalChartCondition, id=condition_id, tooth=tooth)
         
         # Update the fields
@@ -262,27 +484,28 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         tooth_condition.updated_by = request.user
         tooth_condition.save()
         
-        # Record in history
+        # Create history entry
         ChartHistory.objects.create(
             patient=patient,
             user=request.user,
             action='update_condition',
-            tooth_number=tooth_number,
+            tooth_number=str(tooth_number),
             details={
                 'condition_name': tooth_condition.condition.name,
-                'surface': tooth_condition.surface
+                'surface': tooth_condition.surface,
+                'severity': tooth_condition.severity
             }
         )
         
         serializer = DentalChartConditionSerializer(tooth_condition)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['delete'], url_path='tooth/(?P<tooth_number>[0-9]+)/condition/(?P<condition_id>[0-9]+)')
+    @action(detail=True, methods=['delete'], url_path='tooth/(?P<tooth_number>[A-Za-z0-9]+)/condition/(?P<condition_id>[0-9]+)')
     def delete_tooth_condition(self, request, clinic_id=None, patient_id=None, tooth_number=None, condition_id=None):
         """Delete a condition from a tooth."""
         clinic = self.get_clinic_from_url()
         patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
-        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=tooth_number)
+        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=str(tooth_number))
         tooth_condition = get_object_or_404(DentalChartCondition, id=condition_id, tooth=tooth)
         
         # Record in history before deleting
@@ -295,7 +518,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             patient=patient,
             user=request.user,
             action='remove_condition',
-            tooth_number=tooth_number,
+            tooth_number=str(tooth_number),
             details={
                 'condition_name': condition_name,
                 'surface': surface
@@ -304,7 +527,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-    @action(detail=True, methods=['post'], url_path='tooth/(?P<tooth_number>[0-9]+)/procedure')
+    @action(detail=True, methods=['post'], url_path='tooth/(?P<tooth_number>[A-Za-z0-9]+)/procedure')
     def add_tooth_procedure(self, request, clinic_id=None, patient_id=None, tooth_number=None):
         """Add a procedure to a tooth."""
         clinic = self.get_clinic_from_url()
@@ -313,7 +536,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         # Ensure the patient has teeth records
         self._ensure_patient_has_teeth(patient)
         
-        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=tooth_number)
+        # Get the tooth
+        tooth = get_object_or_404(DentalChartTooth, patient=patient, number=str(tooth_number))
         
         # Check if we're creating a custom procedure or using an existing one
         if 'custom_name' in request.data:
@@ -359,16 +583,17 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             status=request.data.get('status', 'planned')
         )
         
-        # Record in history
+        # Create history entry
         ChartHistory.objects.create(
             patient=patient,
             user=request.user,
             action='add_procedure',
-            tooth_number=tooth_number,
+            tooth_number=str(tooth_number),
             details={
                 'procedure_name': procedure.name,
                 'surface': tooth_procedure.surface,
-                'status': tooth_procedure.status
+                'status': tooth_procedure.status,
+                'price': str(tooth_procedure.price)
             }
         )
         

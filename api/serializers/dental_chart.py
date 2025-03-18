@@ -42,12 +42,26 @@ class DentalChartProcedureSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'performed_by']
 
 class DentalChartToothSerializer(serializers.ModelSerializer):
-    conditions = DentalChartConditionSerializer(many=True, read_only=True)
-    procedures = DentalChartProcedureSerializer(many=True, read_only=True)
-    
+    conditions = serializers.SerializerMethodField()
+    procedures = serializers.SerializerMethodField()
+
     class Meta:
         model = DentalChartTooth
-        fields = ['number', 'name', 'quadrant', 'type', 'conditions', 'procedures']
+        fields = [
+            'number',
+            'universal_number',
+            'dentition_type',
+            'name',
+            'quadrant',
+            'conditions',
+            'procedures'
+        ]
+    
+    def get_conditions(self, obj):
+        return DentalChartConditionSerializer(obj.conditions.all(), many=True).data
+    
+    def get_procedures(self, obj):
+        return DentalChartProcedureSerializer(obj.procedures.all(), many=True).data
 
 class DentalChartSerializer(serializers.ModelSerializer):
     teeth = DentalChartToothSerializer(source='dental_chart_teeth', many=True, read_only=True)
@@ -81,4 +95,12 @@ class ChartHistorySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ChartHistory
-        fields = ['id', 'date', 'user', 'action', 'tooth_number', 'details'] 
+        fields = ['id', 'date', 'user', 'action', 'tooth_number', 'details']
+
+class DentalChartViewSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    patient_id = serializers.IntegerField()
+    patient_name = serializers.CharField()
+    last_updated = serializers.DateTimeField()
+    permanent_teeth = DentalChartToothSerializer(many=True)
+    primary_teeth = DentalChartToothSerializer(many=True) 
