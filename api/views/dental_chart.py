@@ -187,15 +187,34 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         clinic = self.get_clinic_from_url()
         patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
         
-        # Get the tooth using FDI number directly
         tooth = get_object_or_404(
-            DentalChartTooth, 
-            patient=patient, 
+            DentalChartTooth,
+            patient=patient,
             number=str(tooth_number)
         )
         
-        # Validate the condition exists in this clinic
-        condition = get_object_or_404(DentalCondition, id=request.data['condition_id'], clinic=clinic)
+        # Check dentition type match if provided
+        if 'dentition_type' in request.data:
+            if request.data['dentition_type'] != tooth.dentition_type:
+                return Response(
+                    {
+                        'error': f'Dentition type mismatch. Tooth {tooth_number} is {tooth.dentition_type}, '
+                                f'but condition is for {request.data["dentition_type"]}'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Handle custom condition creation
+        if 'custom_name' in request.data:
+            condition = DentalCondition.objects.create(
+                clinic=clinic,
+                name=request.data['custom_name'],
+                code=request.data['custom_code'],
+                description=request.data.get('custom_description', ''),
+                is_standard=False
+            )
+        else:
+            condition = get_object_or_404(DentalCondition, id=request.data['condition_id'], clinic=clinic)
         
         # Create the tooth condition
         tooth_condition = DentalChartCondition.objects.create(
