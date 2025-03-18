@@ -478,6 +478,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             user=request.user,
             action='add_condition',
             tooth_number=str(tooth_number),
+            category='conditions',
             details={
                 'condition_name': condition.name,
                 'surface': tooth_condition.surface,
@@ -518,6 +519,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             user=request.user,
             action='update_condition',
             tooth_number=str(tooth_number),
+            category='conditions',
             details={
                 'condition_name': tooth_condition.condition.name,
                 'surface': tooth_condition.surface,
@@ -539,6 +541,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         # Record in history before deleting
         condition_name = tooth_condition.condition.name
         surface = tooth_condition.surface
+        severity = tooth_condition.severity
         
         tooth_condition.delete()
         
@@ -547,9 +550,11 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             user=request.user,
             action='remove_condition',
             tooth_number=str(tooth_number),
+            category='conditions',
             details={
                 'condition_name': condition_name,
-                'surface': surface
+                'surface': surface,
+                'severity': severity
             }
         )
         
@@ -617,6 +622,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             user=request.user,
             action='add_procedure',
             tooth_number=str(tooth_number),
+            category='procedures',
             details={
                 'procedure_name': procedure.name,
                 'surface': tooth_procedure.surface,
