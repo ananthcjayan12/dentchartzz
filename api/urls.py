@@ -11,6 +11,7 @@ from api.views import payments
 from api.views import auth
 from api.views import dentists
 from api.views import dental_chart
+from api.views import stats
 
 router = DefaultRouter()
 # Register viewsets
@@ -92,4 +93,12 @@ urlpatterns = [
         payments.PaymentViewSet.as_view({'get': 'patient_summary_test'}),
         name='payment-patient-summary-test'
     ),
+    # Stats endpoints
+    path('clinics/<int:clinic_id>/stats/patients/',
+         stats.ClinicStatsViewSet.as_view({'get': 'patient_stats'}),
+         name='clinic-patient-stats'),
+         
+    path('clinics/<int:clinic_id>/stats/appointments/',
+         stats.ClinicStatsViewSet.as_view({'get': 'appointment_stats'}),
+         name='clinic-appointment-stats'),
 ] 
