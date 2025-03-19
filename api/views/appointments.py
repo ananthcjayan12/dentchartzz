@@ -19,53 +19,41 @@ class AppointmentViewSet(ClinicModelViewSet):
     """
     queryset = Appointment.objects.all()
     filter_backends = [filters.SearchFilter]
-    search_fields = ['patient__name', 'dentist__username', 'dentist__first_name', 'dentist__last_name', 'notes']
+    search_fields = ['patient__name', 'dentist__first_name', 'dentist__last_name']
     
     def get_queryset(self):
         """
-        Filter appointments by clinic and optionally by date range, status, patient, or dentist.
+        Filter appointments by clinic and optionally by date, status, patient, or dentist.
         """
         queryset = super().get_queryset()
         
         # Get query parameters
-        start_date = self.request.query_params.get('start_date')
-        end_date = self.request.query_params.get('end_date')
-        status_param = self.request.query_params.get('status')
+        date = self.request.query_params.get('date')
         patient_id = self.request.query_params.get('patient_id')
         dentist_id = self.request.query_params.get('dentist_id')
-        today = self.request.query_params.get('today')
-        upcoming = self.request.query_params.get('upcoming')
+        status_param = self.request.query_params.get('status')  # Add status parameter
         
-        # Filter by date range
-        if start_date:
-            queryset = queryset.filter(date__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(date__lte=end_date)
-        
-        # Filter by status
-        if status_param:
-            queryset = queryset.filter(status=status_param)
+        # Filter by date if provided
+        if date:
+            try:
+                # Convert string date to datetime.date object
+                query_date = datetime.strptime(date, '%Y-%m-%d').date()
+                queryset = queryset.filter(date=query_date)
+            except ValueError:
+                # If date format is invalid, return empty queryset
+                return queryset.none()
         
         # Filter by patient
         if patient_id:
             queryset = queryset.filter(patient_id=patient_id)
-        
+            
         # Filter by dentist
         if dentist_id:
             queryset = queryset.filter(dentist_id=dentist_id)
         
-        # Filter for today's appointments
-        if today:
-            today_date = timezone.now().date()
-            queryset = queryset.filter(date=today_date)
-        
-        # Filter for upcoming appointments
-        if upcoming:
-            today_date = timezone.now().date()
-            queryset = queryset.filter(
-                Q(date__gt=today_date) | 
-                Q(date=today_date, start_time__gte=timezone.now().time())
-            ).filter(status='scheduled')
+        # Filter by status
+        if status_param:
+            queryset = queryset.filter(status=status_param)
         
         return queryset.order_by('date', 'start_time')
     
