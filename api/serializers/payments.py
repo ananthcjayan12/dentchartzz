@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from api.models import Payment, PaymentItem, Patient, Appointment, Treatment
 from api.serializers.patients import PatientSerializer
 from api.serializers.appointments import AppointmentSerializer, UserSerializer
+from decimal import Decimal
 
 class PaymentItemSerializer(serializers.ModelSerializer):
     """Serializer for PaymentItem model"""
@@ -174,3 +175,24 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
                 )
         
         return instance 
+
+class PaymentSummarySerializer(serializers.Serializer):
+    """
+    Serializer for payment summary data.
+    Used for aggregating payment information for a patient.
+    """
+    total_billed = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_paid = serializers.DecimalField(max_digits=10, decimal_places=2)
+    balance_due = serializers.DecimalField(max_digits=10, decimal_places=2)
+    last_payment_date = serializers.DateField(allow_null=True)
+    
+    def to_representation(self, instance):
+        """
+        Handle potential None values in the data.
+        """
+        data = super().to_representation(instance)
+        # Convert string values to Decimal objects
+        for field in ['total_billed', 'total_paid', 'balance_due']:
+            if data.get(field) is None:
+                data[field] = Decimal('0')
+        return data 

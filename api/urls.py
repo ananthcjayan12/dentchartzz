@@ -82,4 +82,14 @@ urlpatterns = [
     path('clinics/<int:clinic_id>/patients/<int:patient_id>/dental-chart/tooth/<str:tooth_number>/procedure/<int:procedure_id>/notes/',
          dental_chart.DentalChartViewSet.as_view({'post': 'add_procedure_note'}),
          name='add-procedure-note'),
+    path(
+        'clinics/<int:clinic_id>/patients/<int:patient_id>/payment-summary/',
+        payments.PaymentViewSet.as_view({'get': 'patient_summary'}),
+        name='payment-patient-summary'
+    ),
+    path(
+        'clinics/<int:clinic_id>/patients/<int:patient_id>/payment-summary-test/',
+        payments.PaymentViewSet.as_view({'get': 'patient_summary_test'}),
+        name='payment-patient-summary-test'
+    ),
 ] 

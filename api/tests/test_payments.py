@@ -5,6 +5,8 @@ from django.contrib.auth.models import User
 from datetime import date, timedelta
 from decimal import Decimal
 from api.models import Payment, PaymentItem, Treatment, Patient, Clinic, ClinicMembership, Appointment, Tooth, ToothCondition
+from rest_framework.test import APITestCase
+from django.utils import timezone
 
 @pytest.mark.django_db
 class TestPaymentEndpoints:
@@ -382,4 +384,113 @@ class TestPaymentEndpoints:
         response = authenticated_client.get(url)
         
         # Should return 404 because the payment doesn't exist in this clinic
-        assert response.status_code == status.HTTP_404_NOT_FOUND 
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+class PaymentSummaryTests(APITestCase):
+    def setUp(self):
+        # Create test clinic and patient
+        self.clinic = Clinic.objects.create(name="Test Clinic")
+        
+        # Create a test user and authenticate
+        self.user = User.objects.create_user(
+            username='testuser',
+            password='testpass123',
+            email='test@example.com'
+        )
+        
+        # Create clinic membership for the user
+        self.membership = ClinicMembership.objects.create(
+            user=self.user,
+            clinic=self.clinic,
+            role='dentist',
+            is_primary=True
+        )
+        
+        # Authenticate the client
+        self.client.force_authenticate(user=self.user)
+        
+        self.patient = Patient.objects.create(
+            name="Test Patient",
+            clinic=self.clinic,
+            age=30,
+            gender='M'
+        )
+        
+        # Create some test payments
+        self.payment1 = Payment.objects.create(
+            clinic=self.clinic,
+            patient=self.patient,
+            total_amount=Decimal('1000.00'),
+            amount_paid=Decimal('600.00'),
+            payment_date=timezone.now().date(),
+            created_by=self.user  # Add the created_by field
+        )
+        
+        self.payment2 = Payment.objects.create(
+            clinic=self.clinic,
+            patient=self.patient,
+            total_amount=Decimal('500.00'),
+            amount_paid=Decimal('400.00'),
+            payment_date=timezone.now().date(),
+            created_by=self.user  # Add the created_by field
+        )
+
+    def tearDown(self):
+        # Clean up by logging out
+        self.client.force_authenticate(user=None)
+
+    def test_get_payment_summary(self):
+        url = reverse('payment-patient-summary', kwargs={
+            'clinic_id': self.clinic.id,
+            'patient_id': self.patient.id
+        })
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(response.data['total_billed']), Decimal('1500.00'))
+        self.assertEqual(Decimal(response.data['total_paid']), Decimal('1000.00'))
+        self.assertEqual(Decimal(response.data['balance_due']), Decimal('500.00'))
+        self.assertIsNotNone(response.data['last_payment_date'])
+
+    def test_payment_summary_no_payments(self):
+        # Create new patient with no payments
+        new_patient = Patient.objects.create(
+            name="No Payments Patient",
+            clinic=self.clinic,
+            age=25,
+            gender='F'
+        )
+        
+        url = reverse('payment-patient-summary', kwargs={
+            'clinic_id': self.clinic.id,
+            'patient_id': new_patient.id
+        })
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(response.data['total_billed']), Decimal('0'))
+        self.assertEqual(Decimal(response.data['total_paid']), Decimal('0'))
+        self.assertEqual(Decimal(response.data['balance_due']), Decimal('0'))
+        self.assertIsNone(response.data['last_payment_date'])
+
+    def test_payment_summary_invalid_patient(self):
+        url = reverse('payment-patient-summary', kwargs={
+            'clinic_id': self.clinic.id,
+            'patient_id': 99999
+        })
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_get_payment_summary_test(self):
+        url = reverse('payment-patient-summary-test', kwargs={
+            'clinic_id': self.clinic.id,
+            'patient_id': self.patient.id
+        })
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(response.data['total_billed']), Decimal('1500.00'))
+        self.assertEqual(Decimal(response.data['total_paid']), Decimal('1000.00'))
+        self.assertEqual(Decimal(response.data['balance_due']), Decimal('500.00'))
+        self.assertIsNotNone(response.data['last_payment_date']) 
