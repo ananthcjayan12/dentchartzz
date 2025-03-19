@@ -48,8 +48,8 @@ class Payment(models.Model):
     
     @property
     def is_balance_payment(self):
-        """Check if this is a balance payment (amount_paid > total_amount)"""
-        return self.amount_paid > self.total_amount
+        """Check if this is a balance payment (amount_paid > 0 and total_amount = 0)"""
+        return self.amount_paid > 0 and self.total_amount == 0
     
     class Meta:
         verbose_name = 'Payment'
