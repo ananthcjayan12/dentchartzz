@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from api.models.dental_chart import (
     DentalCondition, DentalProcedure, DentalChartTooth, 
-    DentalChartCondition, DentalChartProcedure, ChartHistory, ProcedureNote
+    DentalChartCondition, DentalChartProcedure, ChartHistory, ProcedureNote, GeneralProcedure
 )
 from api.models import Patient
 
@@ -116,4 +116,23 @@ class DentalChartViewSerializer(serializers.Serializer):
     patient_name = serializers.CharField()
     last_updated = serializers.DateTimeField()
     permanent_teeth = DentalChartToothSerializer(many=True)
-    primary_teeth = DentalChartToothSerializer(many=True) 
+    primary_teeth = DentalChartToothSerializer(many=True)
+
+class GeneralProcedureSerializer(serializers.ModelSerializer):
+    procedure_name = serializers.CharField(source='procedure.name', read_only=True)
+    procedure_code = serializers.CharField(source='procedure.code', read_only=True)
+    performed_by = serializers.CharField(source='dentist.get_full_name', read_only=True)
+    procedure_id = serializers.IntegerField(write_only=True)
+
+    class Meta:
+        model = GeneralProcedure
+        fields = [
+            'id', 'procedure_id', 'procedure_name', 'procedure_code', 
+            'notes', 'description', 'date_performed', 'price',
+            'status', 'performed_by', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'procedure_name', 'procedure_code', 'performed_by', 
+                           'created_at', 'updated_at']
+        extra_kwargs = {
+            'procedure_id': {'required': True}
+        } 

@@ -147,6 +147,35 @@ class ProcedureNote(models.Model):
     class Meta:
         ordering = ['-appointment_date']
 
+class GeneralProcedure(models.Model):
+    """Model for procedures that are not specific to any tooth."""
+    STATUS_CHOICES = [
+        ('planned', 'Planned'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    clinic = models.ForeignKey(Clinic, on_delete=models.CASCADE, related_name='general_procedures')
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='general_procedures')
+    procedure = models.ForeignKey(DentalProcedure, on_delete=models.PROTECT, related_name='general_instances')
+    dentist = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='performed_general_procedures')
+    
+    notes = models.TextField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    date_performed = models.DateField(null=True, blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planned')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']  # Most recent first
+
+    def __str__(self):
+        return f"{self.procedure.name} for {self.patient.name} on {self.date_performed or 'Not performed'}"
+
 @receiver(post_save, sender=Patient)
 def create_dental_chart(sender, instance, created, **kwargs):
     """Create dental chart teeth when a patient is created."""

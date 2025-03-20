@@ -29,18 +29,25 @@ class AppointmentViewSet(ClinicModelViewSet):
         
         # Get query parameters
         date = self.request.query_params.get('date')
+        start_date = self.request.query_params.get('start_date')  # Add this back
         patient_id = self.request.query_params.get('patient_id')
         dentist_id = self.request.query_params.get('dentist_id')
-        status_param = self.request.query_params.get('status')  # Add status parameter
+        status_param = self.request.query_params.get('status')
         
         # Filter by date if provided
         if date:
             try:
-                # Convert string date to datetime.date object
                 query_date = datetime.strptime(date, '%Y-%m-%d').date()
                 queryset = queryset.filter(date=query_date)
             except ValueError:
-                # If date format is invalid, return empty queryset
+                return queryset.none()
+        
+        # Filter by start_date if provided
+        if start_date:
+            try:
+                start = datetime.strptime(start_date, '%Y-%m-%d').date()
+                queryset = queryset.filter(date__gte=start)
+            except ValueError:
                 return queryset.none()
         
         # Filter by patient

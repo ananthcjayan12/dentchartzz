@@ -10,14 +10,14 @@ from django.db import models
 
 from api.models.dental_chart import (
     DentalCondition, DentalProcedure, DentalChartTooth, 
-    DentalChartCondition, DentalChartProcedure, ChartHistory, ProcedureNote
+    DentalChartCondition, DentalChartProcedure, ChartHistory, ProcedureNote, GeneralProcedure
 )
 from api.models import Patient, Clinic
 from api.serializers.dental_chart import (
     DentalConditionSerializer, DentalProcedureSerializer,
     DentalChartConditionSerializer, DentalChartProcedureSerializer,
     DentalChartSerializer, ChartHistorySerializer, DentalChartToothSerializer,
-    DentalChartViewSerializer, ProcedureNoteSerializer
+    DentalChartViewSerializer, ProcedureNoteSerializer, GeneralProcedureSerializer
 )
 from api.views.base import ClinicModelViewSet, ClinicViewSetMixin
 
@@ -512,4 +512,106 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         )
         
         return Response(ProcedureNoteSerializer(note).data, 
-                       status=status.HTTP_201_CREATED) 
+                       status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['POST'])
+    def add_general_procedure(self, request, clinic_id=None, patient_id=None):
+        """Add a general procedure not specific to any tooth."""
+        try:
+            clinic = self.get_clinic_from_url()
+            
+            # First validate the input data
+            serializer = GeneralProcedureSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(
+                    {
+                        'error': 'Invalid procedure data',
+                        'details': serializer.errors
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Then validate patient exists
+            try:
+                patient = Patient.objects.get(id=patient_id, clinic=clinic)
+            except Patient.DoesNotExist:
+                return Response(
+                    {'error': 'Patient not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Then validate procedure exists
+            try:
+                procedure = DentalProcedure.objects.get(
+                    id=serializer.validated_data['procedure_id'],
+                    clinic=clinic
+                )
+            except DentalProcedure.DoesNotExist:
+                return Response(
+                    {'error': 'Procedure not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Create general procedure
+            general_procedure = GeneralProcedure.objects.create(
+                clinic=clinic,
+                patient=patient,
+                procedure=procedure,
+                dentist=request.user,
+                notes=serializer.validated_data.get('notes'),
+                description=serializer.validated_data.get('description'),
+                date_performed=serializer.validated_data.get('date_performed'),
+                price=serializer.validated_data.get('price', procedure.default_price),
+                status=serializer.validated_data.get('status', 'planned')
+            )
+            
+            # Create history entry
+            ChartHistory.objects.create(
+                patient=patient,
+                user=request.user,
+                action='add_general_procedure',
+                category='procedures',
+                details={
+                    'procedure_name': procedure.name,
+                    'status': general_procedure.status,
+                    'price': str(general_procedure.price)
+                }
+            )
+            
+            return Response(
+                GeneralProcedureSerializer(general_procedure).data,
+                status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['GET'])
+    def list_general_procedures(self, request, clinic_id=None, patient_id=None):
+        """List all general procedures for a patient."""
+        try:
+            clinic = self.get_clinic_from_url()
+            patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
+            
+            procedures = GeneralProcedure.objects.filter(
+                clinic=clinic,
+                patient=patient
+            ).order_by('-created_at')  # Explicitly order by creation time
+            
+            # Paginate results
+            page = self.paginate_queryset(procedures)
+            if page is not None:
+                serializer = GeneralProcedureSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            
+            serializer = GeneralProcedureSerializer(procedures, many=True)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            ) 

@@ -101,4 +101,12 @@ urlpatterns = [
     path('clinics/<int:clinic_id>/stats/appointments/',
          stats.ClinicStatsViewSet.as_view({'get': 'appointment_stats'}),
          name='clinic-appointment-stats'),
+    
+    # General procedures endpoint
+    path('clinics/<int:clinic_id>/patients/<int:patient_id>/general-procedures/',
+         dental_chart.DentalChartViewSet.as_view({
+             'post': 'add_general_procedure',
+             'get': 'list_general_procedures'
+         }),
+         name='general-procedures'),
 ] 
