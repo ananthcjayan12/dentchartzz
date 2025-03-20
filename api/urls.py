@@ -109,4 +109,14 @@ urlpatterns = [
              'get': 'list_general_procedures'
          }),
          name='general-procedures'),
+
+    # Add new URL patterns for individual general procedures
+    path('clinics/<int:clinic_id>/patients/<int:patient_id>/general-procedures/<int:procedure_id>/',
+         dental_chart.DentalChartViewSet.as_view({
+             'get': 'get_general_procedure',
+             'put': 'update_general_procedure',
+             'patch': 'update_general_procedure',
+             'delete': 'delete_general_procedure'
+         }),
+         name='general-procedure-detail'),
 ] 

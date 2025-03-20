@@ -614,4 +614,139 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['GET'], url_path='general-procedures/(?P<procedure_id>[0-9]+)')
+    def get_general_procedure(self, request, clinic_id=None, patient_id=None, procedure_id=None):
+        """Get a specific general procedure."""
+        try:
+            clinic = self.get_clinic_from_url()
+            patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
+            
+            procedure = get_object_or_404(
+                GeneralProcedure,
+                id=procedure_id,
+                clinic=clinic,
+                patient=patient
+            )
+            
+            serializer = GeneralProcedureSerializer(procedure)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['PATCH', 'PUT'], url_path='general-procedures/(?P<procedure_id>[0-9]+)')
+    def update_general_procedure(self, request, clinic_id=None, patient_id=None, procedure_id=None):
+        """Update a general procedure."""
+        try:
+            clinic = self.get_clinic_from_url()
+            patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
+            
+            procedure = get_object_or_404(
+                GeneralProcedure,
+                id=procedure_id,
+                clinic=clinic,
+                patient=patient
+            )
+            
+            # Handle partial updates (PATCH)
+            partial = request.method == 'PATCH'
+            
+            # If procedure_id is in the request data, validate it exists
+            if 'procedure_id' in request.data:
+                try:
+                    dental_procedure = DentalProcedure.objects.get(
+                        id=request.data['procedure_id'],
+                        clinic=clinic
+                    )
+                    # Update the procedure reference
+                    procedure.procedure = dental_procedure
+                except DentalProcedure.DoesNotExist:
+                    return Response(
+                        {'error': 'Procedure not found'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+            
+            # Update fields directly
+            if 'notes' in request.data:
+                procedure.notes = request.data['notes']
+            if 'description' in request.data:
+                procedure.description = request.data['description']
+            if 'price' in request.data:
+                procedure.price = request.data['price']
+            if 'status' in request.data:
+                procedure.status = request.data['status']
+            if 'date_performed' in request.data:
+                procedure.date_performed = request.data['date_performed']
+            
+            procedure.save()
+            
+            # Create history entry
+            ChartHistory.objects.create(
+                patient=patient,
+                user=request.user,
+                action='update_procedure',
+                category='procedures',
+                details={
+                    'procedure_name': procedure.procedure.name,
+                    'status': procedure.status,
+                    'price': str(procedure.price)
+                }
+            )
+            
+            serializer = GeneralProcedureSerializer(procedure)
+            return Response(serializer.data)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['DELETE'], url_path='general-procedures/(?P<procedure_id>[0-9]+)')
+    def delete_general_procedure(self, request, clinic_id=None, patient_id=None, procedure_id=None):
+        """Delete a general procedure."""
+        try:
+            clinic = self.get_clinic_from_url()
+            patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
+            
+            procedure = get_object_or_404(
+                GeneralProcedure,
+                id=procedure_id,
+                clinic=clinic,
+                patient=patient
+            )
+            
+            # Store procedure details before deletion for history
+            procedure_name = procedure.procedure.name
+            procedure_status = procedure.status
+            procedure_price = procedure.price
+            
+            # Delete the procedure
+            procedure.delete()
+            
+            # Create history entry
+            ChartHistory.objects.create(
+                patient=patient,
+                user=request.user,
+                action='remove_procedure',
+                category='procedures',
+                details={
+                    'procedure_name': procedure_name,
+                    'status': procedure_status,
+                    'price': str(procedure_price),
+                    'is_general': True
+                }
+            )
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
             ) 

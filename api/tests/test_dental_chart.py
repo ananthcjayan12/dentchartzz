@@ -1071,6 +1071,89 @@ class TestDentalChartEndpoints:
         assert len(response.data['results']) == 1  # Check results in paginated response
         assert response.data['results'][0]['tooth_number'] == '11'
 
+    def test_update_general_procedure(self, authenticated_client, user, clinic, clinic_membership, patient_with_teeth, dental_procedure):
+        """Test updating a general procedure."""
+        # First create a general procedure
+        general_procedure = GeneralProcedure.objects.create(
+            clinic=clinic,
+            patient=patient_with_teeth,
+            procedure=dental_procedure,
+            dentist=user,
+            notes="Initial notes",
+            date_performed=timezone.now().date(),
+            price=Decimal('150.00'),
+            status='in_progress'
+        )
+        
+        url = reverse('general-procedure-detail', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'procedure_id': general_procedure.id
+        })
+        
+        update_data = {
+            'notes': 'Updated notes',
+            'price': '200.00',
+            'status': 'completed'
+        }
+        
+        response = authenticated_client.patch(url, update_data, format='json')
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['notes'] == 'Updated notes'
+        assert Decimal(response.data['price']) == Decimal('200.00')
+        assert response.data['status'] == 'completed'
+        
+        # Verify the procedure was updated in the database
+        general_procedure.refresh_from_db()
+        assert general_procedure.notes == 'Updated notes'
+        assert general_procedure.price == Decimal('200.00')
+        assert general_procedure.status == 'completed'
+        
+        # Verify history was created
+        history = ChartHistory.objects.filter(
+            patient=patient_with_teeth,
+            action='update_procedure'
+        ).latest('date')
+        assert history.details['procedure_name'] == dental_procedure.name
+        assert history.details['status'] == 'completed'
+
+    def test_delete_general_procedure(self, authenticated_client, user, clinic, clinic_membership, patient_with_teeth, dental_procedure):
+        """Test deleting a general procedure."""
+        # First create a general procedure
+        general_procedure = GeneralProcedure.objects.create(
+            clinic=clinic,
+            patient=patient_with_teeth,
+            procedure=dental_procedure,
+            dentist=user,
+            notes="Test procedure",
+            date_performed=timezone.now().date(),
+            price=Decimal('150.00'),
+            status='completed'
+        )
+        
+        url = reverse('general-procedure-detail', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'procedure_id': general_procedure.id
+        })
+        
+        response = authenticated_client.delete(url)
+        
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        
+        # Verify the procedure was deleted
+        assert not GeneralProcedure.objects.filter(id=general_procedure.id).exists()
+        
+        # Verify history was created
+        history = ChartHistory.objects.filter(
+            patient=patient_with_teeth,
+            action='remove_procedure'
+        ).latest('date')
+        assert history.details['procedure_name'] == dental_procedure.name
+        assert history.details['status'] == 'completed'
+        assert history.details['is_general'] == True
+
 class GeneralProcedureTests(APITestCase):
     def setUp(self):
         # Create test clinic
