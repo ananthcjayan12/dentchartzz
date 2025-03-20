@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from api.models.dental_chart import (
     DentalCondition, DentalProcedure, DentalChartTooth, 
-    DentalChartCondition, DentalChartProcedure, ChartHistory, ProcedureNote, GeneralProcedure
+    DentalChartCondition, DentalChartProcedure, ChartHistory, ProcedureNote, GeneralProcedure, GeneralProcedureNote
 )
 from api.models import Patient
 
@@ -118,21 +118,36 @@ class DentalChartViewSerializer(serializers.Serializer):
     permanent_teeth = DentalChartToothSerializer(many=True)
     primary_teeth = DentalChartToothSerializer(many=True)
 
+class GeneralProcedureNoteSerializer(serializers.ModelSerializer):
+    created_by = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = GeneralProcedureNote
+        fields = ['id', 'note', 'appointment_date', 'created_by', 'created_at']
+    
+    def get_created_by(self, obj):
+        if obj.created_by:
+            return obj.created_by.get_full_name() or obj.created_by.username
+        return None 
+
 class GeneralProcedureSerializer(serializers.ModelSerializer):
     procedure_name = serializers.CharField(source='procedure.name', read_only=True)
     procedure_code = serializers.CharField(source='procedure.code', read_only=True)
     performed_by = serializers.CharField(source='dentist.get_full_name', read_only=True)
     procedure_id = serializers.IntegerField(write_only=True)
+    progress_notes = GeneralProcedureNoteSerializer(source='notes', many=True, read_only=True)
 
     class Meta:
         model = GeneralProcedure
         fields = [
             'id', 'procedure_id', 'procedure_name', 'procedure_code', 
-            'notes', 'description', 'date_performed', 'price',
-            'status', 'performed_by', 'created_at', 'updated_at'
+            'procedure_notes', 'description', 'date_performed', 'price',
+            'status', 'performed_by', 'created_at', 'updated_at',
+            'progress_notes'
         ]
         read_only_fields = ['id', 'procedure_name', 'procedure_code', 'performed_by', 
                            'created_at', 'updated_at']
         extra_kwargs = {
             'procedure_id': {'required': True}
-        } 
+        }
+

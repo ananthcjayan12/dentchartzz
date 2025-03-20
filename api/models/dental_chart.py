@@ -161,7 +161,7 @@ class GeneralProcedure(models.Model):
     procedure = models.ForeignKey(DentalProcedure, on_delete=models.PROTECT, related_name='general_instances')
     dentist = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='performed_general_procedures')
     
-    notes = models.TextField(blank=True, null=True)
+    procedure_notes = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     date_performed = models.DateField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -175,6 +175,17 @@ class GeneralProcedure(models.Model):
 
     def __str__(self):
         return f"{self.procedure.name} for {self.patient.name} on {self.date_performed or 'Not performed'}"
+
+class GeneralProcedureNote(models.Model):
+    """Model for general procedure progress notes."""
+    procedure = models.ForeignKey('GeneralProcedure', on_delete=models.CASCADE, related_name='notes')
+    note = models.TextField()
+    appointment_date = models.DateTimeField()
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-appointment_date']
 
 @receiver(post_save, sender=Patient)
 def create_dental_chart(sender, instance, created, **kwargs):

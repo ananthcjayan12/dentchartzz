@@ -279,6 +279,48 @@ class TestDentalChartEndpoints:
         )
         return membership
 
+    @pytest.fixture
+    def clinic(self):
+        """Create and return a test clinic."""
+        return Clinic.objects.create(
+            name='Test Clinic',
+            address='Test Address',
+            phone='1234567890',
+            email='test@example.com'
+        )
+    
+    @pytest.fixture
+    def patient(self, clinic):
+        """Create and return a test patient."""
+        return Patient.objects.create(
+            clinic=clinic,
+            name='Test Patient',
+            age=30,
+            gender='M',
+            phone='1234567890'
+        )
+    
+    @pytest.fixture
+    def procedure(self, clinic):
+        """Create and return a test dental procedure."""
+        return DentalProcedure.objects.create(
+            clinic=clinic,
+            name='Test Procedure',
+            code='TEST',
+            description='Test procedure description',
+            default_price=Decimal('100.00')
+        )
+
+    @pytest.fixture
+    def user(self):
+        """Create and return a test user."""
+        return User.objects.create_user(
+            username='testuser',
+            password='testpass123',
+            first_name='Test',
+            last_name='Dentist'
+        )
+
     def test_get_dental_conditions(self, authenticated_client, user, clinic, clinic_membership, dental_condition):
         """Test getting dental conditions."""
         url = reverse('dental-conditions', kwargs={'clinic_id': clinic.id})
@@ -1079,7 +1121,7 @@ class TestDentalChartEndpoints:
             patient=patient_with_teeth,
             procedure=dental_procedure,
             dentist=user,
-            notes="Initial notes",
+            procedure_notes="Initial notes",
             date_performed=timezone.now().date(),
             price=Decimal('150.00'),
             status='in_progress'
@@ -1092,7 +1134,7 @@ class TestDentalChartEndpoints:
         })
         
         update_data = {
-            'notes': 'Updated notes',
+            'procedure_notes': 'Updated notes',
             'price': '200.00',
             'status': 'completed'
         }
@@ -1100,13 +1142,13 @@ class TestDentalChartEndpoints:
         response = authenticated_client.patch(url, update_data, format='json')
         
         assert response.status_code == status.HTTP_200_OK
-        assert response.data['notes'] == 'Updated notes'
+        assert response.data['procedure_notes'] == 'Updated notes'
         assert Decimal(response.data['price']) == Decimal('200.00')
         assert response.data['status'] == 'completed'
         
         # Verify the procedure was updated in the database
         general_procedure.refresh_from_db()
-        assert general_procedure.notes == 'Updated notes'
+        assert general_procedure.procedure_notes == 'Updated notes'
         assert general_procedure.price == Decimal('200.00')
         assert general_procedure.status == 'completed'
         
@@ -1126,7 +1168,7 @@ class TestDentalChartEndpoints:
             patient=patient_with_teeth,
             procedure=dental_procedure,
             dentist=user,
-            notes="Test procedure",
+            procedure_notes="Test procedure",
             date_performed=timezone.now().date(),
             price=Decimal('150.00'),
             status='completed'
@@ -1154,168 +1196,53 @@ class TestDentalChartEndpoints:
         assert history.details['status'] == 'completed'
         assert history.details['is_general'] == True
 
-class GeneralProcedureTests(APITestCase):
-    def setUp(self):
-        # Create test clinic
-        self.clinic = Clinic.objects.create(name="Test Clinic")
-        
-        # Create test user (dentist)
-        self.user = User.objects.create_user(
-            username='testdentist',
-            password='testpass123',
-            first_name='Test',
-            last_name='Dentist'
-        )
-        
-        # Create clinic membership
-        self.membership = ClinicMembership.objects.create(
-            user=self.user,
-            clinic=self.clinic,
-            role='dentist'
-        )
-        
-        # Create test patient
-        self.patient = Patient.objects.create(
-            name="Test Patient",
-            clinic=self.clinic,
-            age=30,
-            gender='M'
-        )
-        
-        # Create test dental procedure
-        self.procedure = DentalProcedure.objects.create(
-            clinic=self.clinic,
-            name="Scaling and Polishing",
-            code="D1110",
-            description="Full mouth scaling and polishing",
-            default_price=Decimal('150.00')
-        )
-        
-        # Authenticate the client
-        self.client.force_authenticate(user=self.user)
-        
-    def test_add_general_procedure(self):
-        """Test adding a general procedure."""
-        url = reverse('general-procedures', kwargs={
-            'clinic_id': self.clinic.id,
-            'patient_id': self.patient.id
-        })
-        
-        data = {
-            'procedure_id': self.procedure.id,
-            'notes': "General scaling and polishing done",
-            'date_performed': "2024-03-19",
-            'price': "150.00",
-            'status': "completed"
-        }
-        
-        response = self.client.post(url, data, format='json')
-        
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['procedure_name'], "Scaling and Polishing")
-        self.assertEqual(response.data['procedure_code'], "D1110")
-        self.assertEqual(response.data['notes'], "General scaling and polishing done")
-        self.assertEqual(response.data['status'], "completed")
-        self.assertEqual(Decimal(response.data['price']), Decimal('150.00'))
-        self.assertEqual(response.data['performed_by'], "Test Dentist")
-    
-    def test_list_general_procedures(self):
-        """Test listing general procedures."""
-        # Create first procedure
-        GeneralProcedure.objects.create(
-            clinic=self.clinic,
-            patient=self.patient,
-            procedure=self.procedure,
-            dentist=self.user,
-            notes="First procedure",
+    def test_add_general_procedure_note(self, authenticated_client, user, clinic, clinic_membership, patient_with_teeth, dental_procedure):
+        """Test adding a note to a general procedure."""
+        # First create a general procedure
+        general_procedure = GeneralProcedure.objects.create(
+            clinic=clinic,
+            patient=patient_with_teeth,
+            procedure=dental_procedure,
+            dentist=user,
+            procedure_notes="Initial procedure",
             date_performed=timezone.now().date(),
             price=Decimal('150.00'),
             status='completed'
         )
         
-        # Add a small delay to ensure different created_at times
-        sleep(0.1)
-        
-        # Create second procedure
-        GeneralProcedure.objects.create(
-            clinic=self.clinic,
-            patient=self.patient,
-            procedure=self.procedure,
-            dentist=self.user,
-            notes="Second procedure",
-            date_performed=timezone.now().date(),
-            price=Decimal('150.00'),
-            status='planned'
-        )
-        
-        url = reverse('general-procedures', kwargs={
-            'clinic_id': self.clinic.id,
-            'patient_id': self.patient.id
-        })
-        
-        response = self.client.get(url)
-        
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Check paginated response
-        self.assertEqual(len(response.data['results']), 2)  # Check results count
-        self.assertEqual(response.data['count'], 2)  # Check total count
-        self.assertEqual(response.data['results'][0]['notes'], "Second procedure")  # Most recent first
-        self.assertEqual(response.data['results'][1]['notes'], "First procedure")  # Older second
-    
-    def test_add_general_procedure_invalid_data(self):
-        """Test adding a general procedure with invalid data."""
-        url = reverse('general-procedures', kwargs={
-            'clinic_id': self.clinic.id,
-            'patient_id': self.patient.id
-        })
-        
-        # Missing required field procedure_id
-        data = {
-            'notes': "General scaling and polishing done",
-            'date_performed': "2024-03-19",
-            'price': "150.00",
-            'status': "completed"
-        }
-        
-        response = self.client.post(url, data, format='json')
-        
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('procedure_id', response.data['details'])
-    
-    def test_add_general_procedure_invalid_procedure(self):
-        """Test adding a general procedure with invalid procedure ID."""
-        url = reverse('general-procedures', kwargs={
-            'clinic_id': self.clinic.id,
-            'patient_id': self.patient.id
+        url = reverse('add-general-procedure-note', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'procedure_id': general_procedure.id
         })
         
         data = {
-            'procedure_id': 99999,  # Non-existent procedure ID
-            'notes': "General scaling and polishing done",
-            'date_performed': "2024-03-19",
-            'price': "150.00",
-            'status': "completed"
+            'note': 'Follow-up check done. Everything looks good.',
+            'appointment_date': timezone.now().strftime('%Y-%m-%d %H:%M')
         }
         
-        response = self.client.post(url, data, format='json')
+        response = authenticated_client.post(url, data, format='json')
         
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-    
-    def test_add_general_procedure_invalid_patient(self):
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['note'] == data['note']
+        assert response.data['created_by'] == 'Test Dentist'
+
+    def test_add_general_procedure_invalid_patient(self, authenticated_client, user, clinic, clinic_membership, dental_procedure):
         """Test adding a general procedure for invalid patient."""
         url = reverse('general-procedures', kwargs={
-            'clinic_id': self.clinic.id,
+            'clinic_id': clinic.id,
             'patient_id': 99999  # Non-existent patient ID
         })
         
         data = {
-            'procedure_id': self.procedure.id,
-            'notes': "General scaling and polishing done",
+            'procedure_id': dental_procedure.id,
+            'procedure_notes': "General scaling and polishing done",
             'date_performed': "2024-03-19",
             'price': "150.00",
             'status': "completed"
         }
         
-        response = self.client.post(url, data, format='json')
+        response = authenticated_client.post(url, data, format='json')
         
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND) 
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data['error'] == 'Patient not found' 

@@ -10,14 +10,14 @@ from django.db import models
 
 from api.models.dental_chart import (
     DentalCondition, DentalProcedure, DentalChartTooth, 
-    DentalChartCondition, DentalChartProcedure, ChartHistory, ProcedureNote, GeneralProcedure
+    DentalChartCondition, DentalChartProcedure, ChartHistory, ProcedureNote, GeneralProcedure, GeneralProcedureNote
 )
 from api.models import Patient, Clinic
 from api.serializers.dental_chart import (
     DentalConditionSerializer, DentalProcedureSerializer,
     DentalChartConditionSerializer, DentalChartProcedureSerializer,
     DentalChartSerializer, ChartHistorySerializer, DentalChartToothSerializer,
-    DentalChartViewSerializer, ProcedureNoteSerializer, GeneralProcedureSerializer
+    DentalChartViewSerializer, ProcedureNoteSerializer, GeneralProcedureSerializer, GeneralProcedureNoteSerializer
 )
 from api.views.base import ClinicModelViewSet, ClinicViewSetMixin
 
@@ -516,7 +516,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
 
     @action(detail=False, methods=['POST'])
     def add_general_procedure(self, request, clinic_id=None, patient_id=None):
-        """Add a general procedure not specific to any tooth."""
+        """Add a general procedure."""
         try:
             clinic = self.get_clinic_from_url()
             
@@ -524,10 +524,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             serializer = GeneralProcedureSerializer(data=request.data)
             if not serializer.is_valid():
                 return Response(
-                    {
-                        'error': 'Invalid procedure data',
-                        'details': serializer.errors
-                    },
+                    {'error': 'Invalid procedure data', 'details': serializer.errors},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
@@ -540,10 +537,10 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
-            # Then validate procedure exists
+            # Get the dental procedure
             try:
                 procedure = DentalProcedure.objects.get(
-                    id=serializer.validated_data['procedure_id'],
+                    id=request.data['procedure_id'],
                     clinic=clinic
                 )
             except DentalProcedure.DoesNotExist:
@@ -558,11 +555,11 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 patient=patient,
                 procedure=procedure,
                 dentist=request.user,
-                notes=serializer.validated_data.get('notes'),
-                description=serializer.validated_data.get('description'),
-                date_performed=serializer.validated_data.get('date_performed'),
-                price=serializer.validated_data.get('price', procedure.default_price),
-                status=serializer.validated_data.get('status', 'planned')
+                procedure_notes=request.data.get('procedure_notes'),
+                description=request.data.get('description'),
+                date_performed=request.data.get('date_performed'),
+                price=request.data.get('price', procedure.default_price),
+                status=request.data.get('status', 'planned')
             )
             
             # Create history entry
@@ -653,27 +650,9 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 patient=patient
             )
             
-            # Handle partial updates (PATCH)
-            partial = request.method == 'PATCH'
-            
-            # If procedure_id is in the request data, validate it exists
-            if 'procedure_id' in request.data:
-                try:
-                    dental_procedure = DentalProcedure.objects.get(
-                        id=request.data['procedure_id'],
-                        clinic=clinic
-                    )
-                    # Update the procedure reference
-                    procedure.procedure = dental_procedure
-                except DentalProcedure.DoesNotExist:
-                    return Response(
-                        {'error': 'Procedure not found'},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-            
             # Update fields directly
-            if 'notes' in request.data:
-                procedure.notes = request.data['notes']
+            if 'procedure_notes' in request.data:  # Changed from notes
+                procedure.procedure_notes = request.data['procedure_notes']
             if 'description' in request.data:
                 procedure.description = request.data['description']
             if 'price' in request.data:
@@ -744,6 +723,61 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             )
             
             return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['post'], 
+            url_path='general-procedures/(?P<procedure_id>[0-9]+)/notes')
+    def add_general_procedure_note(self, request, clinic_id=None, patient_id=None, procedure_id=None):
+        """Add a progress note to a general procedure."""
+        try:
+            clinic = self.get_clinic_from_url()
+            patient = get_object_or_404(Patient, id=patient_id, clinic=clinic)
+            procedure = get_object_or_404(GeneralProcedure, 
+                                        id=procedure_id, 
+                                        clinic=clinic, 
+                                        patient=patient)
+            
+            try:
+                appointment_date = timezone.make_aware(
+                    datetime.strptime(request.data['appointment_date'], '%Y-%m-%d %H:%M')
+                )
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid date format. Use YYYY-MM-DD HH:MM.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            note = GeneralProcedureNote.objects.create(
+                procedure=procedure,
+                note=request.data['note'],
+                appointment_date=appointment_date,
+                created_by=request.user
+            )
+            
+            # Create history entry
+            ChartHistory.objects.create(
+                patient=patient,
+                user=request.user,
+                action='add_procedure_note',
+                category='procedures',
+                details={
+                    'procedure_name': procedure.procedure.name,
+                    'note': note.note,
+                    'appointment_date': appointment_date.strftime('%Y-%m-%d %H:%M'),
+                    'status': procedure.status,
+                    'is_general': True
+                }
+            )
+            
+            return Response(
+                GeneralProcedureNoteSerializer(note).data,
+                status=status.HTTP_201_CREATED
+            )
             
         except Exception as e:
             return Response(

@@ -119,4 +119,9 @@ urlpatterns = [
              'delete': 'delete_general_procedure'
          }),
          name='general-procedure-detail'),
+
+    # Add this URL pattern
+    path('clinics/<int:clinic_id>/patients/<int:patient_id>/general-procedures/<int:procedure_id>/notes/',
+         dental_chart.DentalChartViewSet.as_view({'post': 'add_general_procedure_note'}),
+         name='add-general-procedure-note'),
 ] 
