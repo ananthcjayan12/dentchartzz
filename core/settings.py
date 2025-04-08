@@ -73,6 +73,7 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React/Next.js frontend in development
     "http://127.0.0.1:3000",
+    "https://dentchartz.srshti.co.in",
 ]
 
 # If you want to allow credentials (cookies, authorization headers)
