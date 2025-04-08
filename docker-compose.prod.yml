@@ -8,7 +8,7 @@ services:
       - db
     environment:
       - DATABASE_URL=postgres://dentchartzz:dentchartzz_password@db:5432/dentchartzz_db
-      - DEBUG=False
+      - DEBUG=True
       - SECRET_KEY=${SECRET_KEY:-django-insecure-#75##%huc7(f^loyov77=pga%^1b^*bjnl-9e19r&c9z(jm18(}
       - PYTHONUNBUFFERED=1
     volumes:
