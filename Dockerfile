@@ -8,6 +8,8 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-traditional \
     curl \
+    postgresql-client \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set work directory
@@ -25,6 +27,9 @@ COPY . .
 
 # Make entrypoint script executable
 RUN chmod +x entrypoint.sh
+
+# Make sure psycopg2 is installed
+RUN pip install psycopg2-binary
 
 # Run the application
 ENTRYPOINT ["/app/entrypoint.sh"] 
