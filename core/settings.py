@@ -135,14 +135,16 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-if HAS_DJ_DATABASE_URL:
+if os.environ.get('DATABASE_URL'):
+    # Use DATABASE_URL environment variable if available (Docker environment)
     DATABASES = {
         'default': dj_database_url.config(
-            default='sqlite:///' + str(BASE_DIR / 'db.sqlite3'),
+            default=os.environ.get('DATABASE_URL'),
             conn_max_age=600
         )
     }
 else:
+    # Fallback for local development without Docker
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
