@@ -36,7 +36,7 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['*', 'dentchartz.srshti.co.in']
 
 # Add this new setting for CSRF protection with HTTPS
-CSRF_TRUSTED_ORIGINS = ['https://dentchartz.srshti.co.in','https://apidentcharts.srshti.co.in/']
+CSRF_TRUSTED_ORIGINS = ['https://dentchartz.srshti.co.in','https://apidentcharts.srshti.co.in/','https://apidentcharts.srshti.co.in']
 
 
 # Application definition
