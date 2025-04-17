@@ -5,6 +5,7 @@ from api.models.dental_chart import (
     DentalChartCondition, DentalChartProcedure, ChartHistory,
     ProcedureNote, GeneralProcedure, GeneralProcedureNote
 )
+from api.models.patients import Patient  # Import the Patient model
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from decimal import Decimal
@@ -317,6 +318,20 @@ class GeneralProcedureNoteAdmin(admin.ModelAdmin):
     search_fields = ('note', 'procedure__procedure__name')
     date_hierarchy = 'appointment_date'
     raw_id_fields = ('procedure', 'created_by')
+
+# Register the Patient model
+@admin.register(Patient)
+class PatientAdmin(admin.ModelAdmin):
+    list_display = ('name', 'age', 'gender', 'phone', 'email', 'clinic', 'created_at')
+    list_filter = ('gender', 'clinic', 'created_at')
+    search_fields = ('name', 'phone', 'email', 'address', 'chief_complaint')
+    date_hierarchy = 'created_at'
+    fieldsets = (
+        ('Personal Information', {'fields': ('clinic', 'name', 'age', 'gender', 'date_of_birth')}),
+        ('Contact Details', {'fields': ('phone', 'email', 'address')}),
+        ('Medical Information', {'fields': ('chief_complaint', 'medical_history', 'drug_allergies', 'previous_dental_work')}),
+    )
+    raw_id_fields = ('clinic',)
 
 # Re-register UserAdmin
 admin.site.unregister(User)
