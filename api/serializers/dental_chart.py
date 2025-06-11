@@ -20,12 +20,13 @@ class DentalChartConditionSerializer(serializers.ModelSerializer):
     condition_code = serializers.CharField(source='condition.code', read_only=True)
     created_by = serializers.CharField(source='created_by.get_full_name', read_only=True)
     updated_by = serializers.CharField(source='updated_by.get_full_name', read_only=True)
+    notes = serializers.CharField(source='description', read_only=True)
     
     class Meta:
         model = DentalChartCondition
         fields = [
             'id', 'condition_id', 'condition_name', 'condition_code', 'surface', 'description', 
-            'severity', 'created_at', 'updated_at', 'created_by', 'updated_by'
+            'notes', 'severity', 'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
         read_only_fields = ['created_at', 'updated_at', 'created_by', 'updated_by']
 

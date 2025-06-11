@@ -221,7 +221,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             tooth=tooth,
             condition=condition,
             surface=request.data.get('surface', ''),
-            description=request.data.get('description', ''),
+            description=request.data.get('description', request.data.get('notes', '')),
             severity=request.data.get('severity', 'moderate'),
             created_by=request.user,
             updated_by=request.user
@@ -237,7 +237,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             details={
                 'condition_name': condition.name,
                 'surface': tooth_condition.surface,
-                'severity': tooth_condition.severity
+                'severity': tooth_condition.severity,
+                'notes': tooth_condition.description
             }
         )
         
@@ -259,6 +260,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             tooth_condition.surface = request.data['surface']
         if 'description' in request.data:
             tooth_condition.description = request.data['description']
+        elif 'notes' in request.data:  # Handle 'notes' field as well
+            tooth_condition.description = request.data['notes']
         if 'severity' in request.data:
             tooth_condition.severity = request.data['severity']
         
@@ -275,7 +278,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             details={
                 'condition_name': tooth_condition.condition.name,
                 'surface': tooth_condition.surface,
-                'severity': tooth_condition.severity
+                'severity': tooth_condition.severity,
+                'notes': tooth_condition.description  # Include notes in history
             }
         )
         
@@ -294,6 +298,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         condition_name = tooth_condition.condition.name
         surface = tooth_condition.surface
         severity = tooth_condition.severity
+        notes = tooth_condition.description  # Capture notes before deletion
         
         tooth_condition.delete()
         
@@ -306,7 +311,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             details={
                 'condition_name': condition_name,
                 'surface': surface,
-                'severity': severity
+                'severity': severity,
+                'notes': notes  # Include notes in history
             }
         )
         
