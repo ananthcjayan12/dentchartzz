@@ -275,7 +275,7 @@ class TestDentalChartEndpoints:
         membership = ClinicMembership.objects.create(
             user=user,
             clinic=clinic,
-            role='administrator'
+            role='admin'
         )
         return membership
 
@@ -908,7 +908,7 @@ class TestDentalChartEndpoints:
         
         assert response.status_code == status.HTTP_200_OK
         
-        # Find the tooth in the response
+        # Find the tooth with the condition
         permanent_teeth = response.data['permanent_teeth']
         tooth_data = next(t for t in permanent_teeth if t['number'] == '11')
         
@@ -1228,21 +1228,327 @@ class TestDentalChartEndpoints:
         assert response.data['created_by'] == 'Test Dentist'
 
     def test_add_general_procedure_invalid_patient(self, authenticated_client, user, clinic, clinic_membership, dental_procedure):
-        """Test adding a general procedure for invalid patient."""
-        url = reverse('general-procedures', kwargs={
-            'clinic_id': clinic.id,
-            'patient_id': 99999  # Non-existent patient ID
-        })
-        
+        """Test adding a general procedure to a non-existent patient."""
+        url = reverse('general-procedures', args=[clinic.id, 99999])  # Non-existent patient ID
         data = {
             'procedure_id': dental_procedure.id,
-            'procedure_notes': "General scaling and polishing done",
-            'date_performed': "2024-03-19",
-            'price': "150.00",
-            'status': "completed"
+            'notes': 'This should fail',
+            'date_performed': '2023-12-01',
+            'price': 120.00,
+            'status': 'completed'
+        }
+        
+        response = authenticated_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_add_tooth_condition_with_date_detected(self, authenticated_client, patient_with_teeth, dental_condition, clinic_membership):
+        """Test adding a condition to a tooth with date_detected field."""
+        url = reverse('add-tooth-condition', kwargs={
+            'clinic_id': patient_with_teeth.clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '11'
+        })
+        data = {
+            'condition_id': dental_condition.id,
+            'surface': 'mesial',
+            'description': 'Test condition with date detected',
+            'severity': 'moderate',
+            'dentition_type': 'permanent',
+            'date_detected': '2023-12-15'
+        }
+        
+        response = authenticated_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['date_detected'] == '2023-12-15T00:00:00Z'
+        
+        # Verify the condition was created with the correct date_detected
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth,
+            number='11',
+            dentition_type='permanent'
+        )
+        condition = tooth.conditions.first()
+        assert condition.date_detected is not None
+        assert condition.date_detected.date().isoformat() == '2023-12-15'
+        
+        # Check that history entry includes date_detected
+        history = ChartHistory.objects.filter(patient=patient_with_teeth, action='add_condition')
+        assert history.count() == 1
+        assert 'date_detected' in history.first().details
+        assert history.first().details['date_detected'] == '2023-12-15T00:00:00+00:00'
+
+    def test_add_tooth_condition_without_date_detected(self, authenticated_client, patient_with_teeth, dental_condition, clinic_membership):
+        """Test adding a condition to a tooth without date_detected field."""
+        url = reverse('add-tooth-condition', kwargs={
+            'clinic_id': patient_with_teeth.clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '11'
+        })
+        data = {
+            'condition_id': dental_condition.id,
+            'surface': 'mesial',
+            'description': 'Test condition without date detected',
+            'severity': 'moderate',
+            'dentition_type': 'permanent'
+        }
+        
+        response = authenticated_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['date_detected'] is None
+        
+        # Verify the condition was created without date_detected
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth,
+            number='11',
+            dentition_type='permanent'
+        )
+        condition = tooth.conditions.first()
+        assert condition.date_detected is None
+        
+        # Check that history entry has null date_detected
+        history = ChartHistory.objects.filter(patient=patient_with_teeth, action='add_condition')
+        assert history.count() == 1
+        assert 'date_detected' in history.first().details
+        assert history.first().details['date_detected'] is None
+
+    def test_add_tooth_condition_with_invalid_date_detected_format(self, authenticated_client, patient_with_teeth, dental_condition, clinic_membership):
+        """Test adding a condition with invalid date_detected format returns error."""
+        url = reverse('add-tooth-condition', kwargs={
+            'clinic_id': patient_with_teeth.clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '11'
+        })
+        data = {
+            'condition_id': dental_condition.id,
+            'surface': 'mesial',
+            'description': 'Test condition with invalid date',
+            'severity': 'moderate',
+            'dentition_type': 'permanent',
+            'date_detected': '15-12-2023'  # Invalid format
+        }
+        
+        response = authenticated_client.post(url, data, format='json')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'Invalid date format' in response.data['error']
+
+    def test_update_tooth_condition_with_date_detected(self, authenticated_client, user, clinic, clinic_membership,
+                                                     patient_with_teeth, dental_condition):
+        """Test updating a condition's date_detected field."""
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth,
+            number='11',
+            dentition_type='permanent'
+        )
+        condition = DentalChartCondition.objects.create(
+            tooth=tooth,
+            condition=dental_condition,
+            surface='occlusal',
+            description='Initial notes',
+            severity='mild',
+            created_by=user,
+            updated_by=user
+        )
+        
+        url = reverse('tooth-condition-detail', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '11',
+            'condition_id': condition.id
+        })
+        data = {
+            'date_detected': '2023-11-20'
+        }
+        
+        response = authenticated_client.patch(url, data, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Check that the condition was updated
+        condition.refresh_from_db()
+        assert condition.date_detected is not None
+        assert condition.date_detected.date().isoformat() == '2023-11-20'
+        
+        # Check that history entry includes date_detected
+        history = ChartHistory.objects.filter(patient=patient_with_teeth, action='update_condition')
+        assert history.count() == 1
+        assert 'date_detected' in history.first().details
+        assert history.first().details['date_detected'] == '2023-11-20T00:00:00+00:00'
+
+    def test_update_tooth_condition_clear_date_detected(self, authenticated_client, user, clinic, clinic_membership,
+                                                      patient_with_teeth, dental_condition):
+        """Test clearing a condition's date_detected field by setting it to empty string."""
+        from django.utils import timezone
+        from datetime import datetime
+        
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth,
+            number='11',
+            dentition_type='permanent'
+        )
+        condition = DentalChartCondition.objects.create(
+            tooth=tooth,
+            condition=dental_condition,
+            surface='occlusal',
+            description='Initial notes',
+            severity='mild',
+            date_detected=timezone.make_aware(datetime(2023, 10, 15)),
+            created_by=user,
+            updated_by=user
+        )
+        
+        url = reverse('tooth-condition-detail', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '11',
+            'condition_id': condition.id
+        })
+        data = {
+            'date_detected': ''  # Empty string to clear the date
+        }
+        
+        response = authenticated_client.patch(url, data, format='json')
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Check that the date_detected was cleared
+        condition.refresh_from_db()
+        assert condition.date_detected is None
+        
+        # Check that history entry shows null date_detected
+        history = ChartHistory.objects.filter(patient=patient_with_teeth, action='update_condition')
+        assert history.count() == 1
+        assert 'date_detected' in history.first().details
+        assert history.first().details['date_detected'] is None
+
+    def test_update_tooth_condition_with_invalid_date_detected_format(self, authenticated_client, user, clinic, clinic_membership,
+                                                                    patient_with_teeth, dental_condition):
+        """Test updating a condition with invalid date_detected format returns error."""
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth,
+            number='11',
+            dentition_type='permanent'
+        )
+        condition = DentalChartCondition.objects.create(
+            tooth=tooth,
+            condition=dental_condition,
+            surface='occlusal',
+            description='Initial notes',
+            severity='mild',
+            created_by=user,
+            updated_by=user
+        )
+        
+        url = reverse('tooth-condition-detail', kwargs={
+            'clinic_id': clinic.id,
+            'patient_id': patient_with_teeth.id,
+            'tooth_number': '11',
+            'condition_id': condition.id
+        })
+        data = {
+            'date_detected': '20/11/2023'  # Invalid format
+        }
+        
+        response = authenticated_client.patch(url, data, format='json')
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert 'Invalid date format' in response.data['error']
+
+    def test_delete_tooth_condition_with_date_detected_in_history(self, authenticated_client, user, clinic, clinic_membership, 
+                                                                patient_with_teeth, dental_condition):
+        """Test deleting a condition includes date_detected in history entry."""
+        from django.utils import timezone
+        from datetime import datetime
+        
+        # First add a condition with date_detected
+        tooth = DentalChartTooth.objects.get(patient=patient_with_teeth, number=11)
+        condition = DentalChartCondition.objects.create(
+            tooth=tooth,
+            condition=dental_condition,
+            surface='occlusal',
+            description='Test notes',
+            severity='moderate',
+            date_detected=timezone.make_aware(datetime(2023, 9, 10)),
+            created_by=user,
+            updated_by=user
+        )
+        
+        # Now delete it
+        url = reverse('tooth-condition-detail', args=[clinic.id, patient_with_teeth.id, 11, condition.id])
+        response = authenticated_client.delete(url)
+        
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        
+        # Check that the condition was deleted
+        assert not DentalChartCondition.objects.filter(id=condition.id).exists()
+        
+        # Check that history entry includes date_detected
+        history = ChartHistory.objects.filter(patient=patient_with_teeth, action='remove_condition')
+        assert history.count() == 1
+        assert 'date_detected' in history.first().details
+        assert history.first().details['date_detected'] == '2023-09-10T00:00:00+00:00'
+
+    def test_dental_chart_condition_serializer_includes_date_detected(self, authenticated_client, user, clinic, clinic_membership,
+                                                                    patient_with_teeth, dental_condition):
+        """Test that the dental chart API response includes date_detected field."""
+        from django.utils import timezone
+        from datetime import datetime
+        
+        tooth = DentalChartTooth.objects.get(
+            patient=patient_with_teeth,
+            number='11',
+            dentition_type='permanent'
+        )
+        DentalChartCondition.objects.create(
+            tooth=tooth,
+            condition=dental_condition,
+            surface='occlusal',
+            description='Test condition with date',
+            severity='moderate',
+            date_detected=timezone.make_aware(datetime(2023, 8, 25)),
+            created_by=user,
+            updated_by=user
+        )
+        
+        url = reverse('dental-chart', args=[clinic.id, patient_with_teeth.id])
+        response = authenticated_client.get(url)
+        
+        assert response.status_code == status.HTTP_200_OK
+        
+        # Find the tooth with the condition
+        permanent_teeth = response.data['permanent_teeth']
+        tooth_data = next(t for t in permanent_teeth if t['number'] == '11')
+        
+        assert tooth_data is not None
+        assert len(tooth_data['conditions']) == 1
+        
+        condition_data = tooth_data['conditions'][0]
+        assert 'date_detected' in condition_data
+        assert condition_data['date_detected'] == '2023-08-25T00:00:00Z'
+
+    def test_add_tooth_condition_with_custom_condition_and_date_detected(self, authenticated_client, user, clinic,
+                                                                       clinic_membership, patient_with_teeth):
+        """Test adding a custom condition to a tooth with date_detected."""
+        url = reverse('add-tooth-condition', args=[clinic.id, patient_with_teeth.id, '11'])
+        data = {
+            'custom_name': 'Unusual Discoloration',
+            'custom_code': 'UD01',
+            'custom_description': 'Unusual discoloration not matching standard conditions',
+            'surface': 'labial',
+            'description': 'Patient reports no pain but concerned about appearance',
+            'severity': 'mild',
+            'date_detected': '2023-07-30'
         }
         
         response = authenticated_client.post(url, data, format='json')
         
-        assert response.status_code == status.HTTP_404_NOT_FOUND
-        assert response.data['error'] == 'Patient not found' 
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data['date_detected'] == '2023-07-30T00:00:00Z'
+        
+        # Check that the condition was added to the tooth with correct date_detected
+        tooth = DentalChartTooth.objects.get(patient=patient_with_teeth, number=11)
+        condition = tooth.conditions.first()
+        assert condition.date_detected is not None
+        assert condition.date_detected.date().isoformat() == '2023-07-30'
+        
+        # Check that history entry includes date_detected
+        history = ChartHistory.objects.filter(patient=patient_with_teeth, action='add_condition')
+        assert history.count() == 1
+        assert 'date_detected' in history.first().details
+        assert history.first().details['date_detected'] == '2023-07-30T00:00:00+00:00' 
