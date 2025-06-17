@@ -216,6 +216,19 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         else:
             condition = get_object_or_404(DentalCondition, id=request.data['condition_id'], clinic=clinic)
         
+        # Parse date_detected if provided
+        date_detected = None
+        if 'date_detected' in request.data and request.data['date_detected']:
+            try:
+                date_detected = timezone.make_aware(
+                    datetime.strptime(request.data['date_detected'], '%Y-%m-%d')
+                )
+            except ValueError:
+                return Response(
+                    {'error': 'Invalid date format. Use YYYY-MM-DD.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
         # Create the tooth condition
         tooth_condition = DentalChartCondition.objects.create(
             tooth=tooth,
@@ -223,6 +236,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             surface=request.data.get('surface', ''),
             description=request.data.get('description', request.data.get('notes', '')),
             severity=request.data.get('severity', 'moderate'),
+            date_detected=date_detected,
             created_by=request.user,
             updated_by=request.user
         )
@@ -238,7 +252,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 'condition_name': condition.name,
                 'surface': tooth_condition.surface,
                 'severity': tooth_condition.severity,
-                'notes': tooth_condition.description
+                'notes': tooth_condition.description,
+                'date_detected': date_detected.isoformat() if date_detected else None
             }
         )
         
@@ -265,6 +280,21 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         if 'severity' in request.data:
             tooth_condition.severity = request.data['severity']
         
+        # Handle date_detected updates
+        if 'date_detected' in request.data:
+            if request.data['date_detected']:
+                try:
+                    tooth_condition.date_detected = timezone.make_aware(
+                        datetime.strptime(request.data['date_detected'], '%Y-%m-%d')
+                    )
+                except ValueError:
+                    return Response(
+                        {'error': 'Invalid date format. Use YYYY-MM-DD.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                tooth_condition.date_detected = None
+        
         tooth_condition.updated_by = request.user
         tooth_condition.save()
         
@@ -279,7 +309,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 'condition_name': tooth_condition.condition.name,
                 'surface': tooth_condition.surface,
                 'severity': tooth_condition.severity,
-                'notes': tooth_condition.description  # Include notes in history
+                'notes': tooth_condition.description,  # Include notes in history
+                'date_detected': tooth_condition.date_detected.isoformat() if tooth_condition.date_detected else None
             }
         )
         
@@ -299,6 +330,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         surface = tooth_condition.surface
         severity = tooth_condition.severity
         notes = tooth_condition.description  # Capture notes before deletion
+        date_detected = tooth_condition.date_detected  # Capture date before deletion
         
         tooth_condition.delete()
         
@@ -312,7 +344,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 'condition_name': condition_name,
                 'surface': surface,
                 'severity': severity,
-                'notes': notes  # Include notes in history
+                'notes': notes,  # Include notes in history
+                'date_detected': date_detected.isoformat() if date_detected else None
             }
         )
         

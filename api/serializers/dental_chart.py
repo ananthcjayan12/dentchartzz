@@ -26,7 +26,7 @@ class DentalChartConditionSerializer(serializers.ModelSerializer):
         model = DentalChartCondition
         fields = [
             'id', 'condition_id', 'condition_name', 'condition_code', 'surface', 'description', 
-            'notes', 'severity', 'created_at', 'updated_at', 'created_by', 'updated_by'
+            'notes', 'severity', 'date_detected', 'created_at', 'updated_at', 'created_by', 'updated_by'
         ]
         read_only_fields = ['created_at', 'updated_at', 'created_by', 'updated_by']
 

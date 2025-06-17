@@ -78,6 +78,7 @@ class DentalChartCondition(models.Model):
     surface = models.CharField(max_length=50, blank=True)
     description = models.TextField(blank=True)
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='moderate')
+    date_detected = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_dental_chart_conditions')

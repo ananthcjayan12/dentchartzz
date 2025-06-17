@@ -30,7 +30,7 @@ services:
              python manage.py runserver 0.0.0.0:8000"
 
   db:
-    image: postgres:13
+    image: postgres:14
     restart: always
     volumes:
       - postgres_data:/var/lib/postgresql/data/
