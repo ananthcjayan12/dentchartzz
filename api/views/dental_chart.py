@@ -107,6 +107,26 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
     pagination_class = PageNumberPagination
     serializer_class = DentalChartViewSerializer
     
+    def _format_date_for_history(self, date_value):
+        """Helper method to format date for history details."""
+        if date_value is None:
+            return None
+        
+        # If it's already a string, return as is
+        if isinstance(date_value, str):
+            return date_value
+        
+        # If it's a datetime object, use isoformat
+        if hasattr(date_value, 'isoformat'):
+            return date_value.isoformat()
+        
+        # If it's a date object, use strftime
+        if hasattr(date_value, 'strftime'):
+            return date_value.strftime('%Y-%m-%d')
+        
+        # Fallback to string conversion
+        return str(date_value)
+    
     def retrieve(self, request, patient_id=None, **kwargs):
         """Get a patient's dental chart."""
         clinic = self.get_clinic_from_url()
@@ -253,7 +273,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 'surface': tooth_condition.surface,
                 'severity': tooth_condition.severity,
                 'notes': tooth_condition.description,
-                'date_detected': date_detected.isoformat() if date_detected else None
+                'date_detected': self._format_date_for_history(date_detected)
             }
         )
         
@@ -310,7 +330,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 'surface': tooth_condition.surface,
                 'severity': tooth_condition.severity,
                 'notes': tooth_condition.description,  # Include notes in history
-                'date_detected': tooth_condition.date_detected.isoformat() if tooth_condition.date_detected else None
+                'date_detected': self._format_date_for_history(tooth_condition.date_detected)
             }
         )
         
@@ -345,7 +365,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 'surface': surface,
                 'severity': severity,
                 'notes': notes,  # Include notes in history
-                'date_detected': date_detected.isoformat() if date_detected else None
+                'date_detected': self._format_date_for_history(date_detected)
             }
         )
         
@@ -413,7 +433,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 'procedure_name': procedure.name,
                 'surface': tooth_procedure.surface,
                 'status': tooth_procedure.status,
-                'price': str(tooth_procedure.price)
+                'price': str(tooth_procedure.price),
+                'date_performed': self._format_date_for_history(date_performed)
             }
         )
         
@@ -460,11 +481,13 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             user=request.user,
             action='update_procedure',
             tooth_number=str(tooth_number),
+            category='procedures',
             details={
                 'procedure_name': tooth_procedure.procedure.name,
                 'surface': tooth_procedure.surface,
                 'status': tooth_procedure.status,
-                'price': str(tooth_procedure.price)
+                'price': str(tooth_procedure.price),
+                'date_performed': self._format_date_for_history(tooth_procedure.date_performed)
             }
         )
         
@@ -489,6 +512,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
         surface = tooth_procedure.surface
         procedure_status = tooth_procedure.status
         price = tooth_procedure.price
+        date_performed = tooth_procedure.date_performed
         
         tooth_procedure.delete()
         
@@ -498,11 +522,13 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             user=request.user,
             action='remove_procedure',
             tooth_number=str(tooth_number),
+            category='procedures',
             details={
                 'procedure_name': procedure_name,
                 'surface': surface,
                 'status': procedure_status,
-                'price': str(price)
+                'price': str(price),
+                'date_performed': self._format_date_for_history(date_performed)
             }
         )
         
@@ -610,7 +636,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 details={
                     'procedure_name': procedure.name,
                     'status': general_procedure.status,
-                    'price': str(general_procedure.price)
+                    'price': str(general_procedure.price),
+                    'date_performed': self._format_date_for_history(general_procedure.date_performed)
                 }
             )
             
@@ -712,7 +739,8 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                 details={
                     'procedure_name': procedure.procedure.name,
                     'status': procedure.status,
-                    'price': str(procedure.price)
+                    'price': str(procedure.price),
+                    'date_performed': self._format_date_for_history(procedure.date_performed)
                 }
             )
             
@@ -743,6 +771,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
             procedure_name = procedure.procedure.name
             procedure_status = procedure.status
             procedure_price = procedure.price
+            date_performed = procedure.date_performed
             
             # Delete the procedure
             procedure.delete()
@@ -757,6 +786,7 @@ class DentalChartViewSet(ClinicViewSetMixin, GenericViewSet):
                     'procedure_name': procedure_name,
                     'status': procedure_status,
                     'price': str(procedure_price),
+                    'date_performed': self._format_date_for_history(date_performed),
                     'is_general': True
                 }
             )
